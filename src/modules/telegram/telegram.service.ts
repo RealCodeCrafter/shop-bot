@@ -372,16 +372,17 @@ export class TelegramService {
     });
   }
 
-    async handleWebhookUpdate(update: TelegramBot.Update) {
-    this.logger.log(`Processing webhook update: ${JSON.stringify(update, null, 2)}`);
-    try {
-      await this.bot.processUpdate(update);
-      this.logger.log('Update processed by bot');
-    } catch (error) {
-      this.logger.error(`Error processing update: ${error.message}`);
-      throw error;
-    }
+  async handleWebhookUpdate(update: TelegramBot.Update) {
+  this.logger.log(`handleWebhookUpdate START: ${JSON.stringify(update, null, 2)}`);
+  try {
+    await this.bot.processUpdate(update);
+    this.logger.log('handleWebhookUpdate END: Success');
+  } catch (error) {
+    this.logger.error(`handleWebhookUpdate ERROR: ${error.message}`);
+    throw error;
   }
+}
+
 
   
 }
