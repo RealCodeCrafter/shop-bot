@@ -11,7 +11,7 @@ export class User {
   @Column({ unique: true, nullable: true })
   telegramId: string;
 
-  @Column()
+  @Column({nullable: true})
   fullName: string;
 
   @Column({ nullable: true })
