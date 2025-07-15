@@ -373,16 +373,17 @@ export class TelegramService {
   }
 
   async handleWebhookUpdate(update: TelegramBot.Update) {
-    try {
-      this.logger.log(`Processing webhook update: ${JSON.stringify(update, null, 2)}`);
-      const startTime = Date.now();
-      await this.bot.processUpdate(update);
-      const duration = Date.now() - startTime;
-      this.logger.log(`Webhook update processed successfully in ${duration}ms`);
-    } catch (error) {
-      this.logger.error(`Webhook update failed: ${error.message}`, error.stack);
-      throw error;
-    }
+  this.logger.log('handleWebhookUpdate called');
+  const startTime = Date.now();
+  
+  try {
+    await this.bot.processUpdate(update);
+    const duration = Date.now() - startTime;
+    this.logger.log(`processUpdate took ${duration}ms`);
+  } catch (error) {
+    this.logger.error(`Error in processUpdate: ${error.message}`);
   }
+}
+
   
 }
