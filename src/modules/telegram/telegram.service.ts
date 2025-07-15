@@ -26,17 +26,22 @@ export class TelegramService {
     private promocodeService: PromocodeService,
     private paymentService: PaymentService,
   ) {
-    this.bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN || "7942071036:AAFz_o_p2p2o-Gq-1C1YZMQSdODCHJiu2dY", { polling: true });
+    this.bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN || "7942071036:AAFz_o_p2p2o-Gq-1C1YZMQSdODCHJiu2dY", {
+      polling: process.env.NODE_ENV !== 'production', // Mahalliy muhitda polling, production'da webhook
+    });
     this.setupWebhook();
     this.setupCommands();
   }
 
   private async setupWebhook() {
-    const webhookUrl = process.env.WEBHOOK_URL || "https://telegram-shop-bot-production.up.railway.app/telegram/webhook";
-    await this.bot.setWebHook(webhookUrl);
-    this.logger.log(`Webhook set to ${webhookUrl}`);
-}
-
+    if (process.env.NODE_ENV === 'production') {
+      const webhookUrl = process.env.WEBHOOK_URL || "https://telegram-shop-bot-production.up.railway.app/telegram/webhook";
+      await this.bot.setWebHook(webhookUrl);
+      this.logger.log(`Webhook set to ${webhookUrl}`);
+    } else {
+      this.logger.log('Polling mode enabled for development');
+    }
+  }
 
   private setupCommands() {
     this.bot.onText(/\/start/, async (msg) => {
@@ -122,8 +127,12 @@ export class TelegramService {
           this.bot.sendMessage(chatId, 'Iltimos, promo-kodni kiriting. Masalan: /promocode ABC123');
           return;
         }
-        const promocode = await this.promocodeService.applyPromocode(code);
-        this.bot.sendMessage(chatId, `Promo-kod qo‘llanildi! ${promocode.discountPercent}% chegirma.`);
+        try {
+          const promocode = await this.promocodeService.applyPromocode(code);
+          this.bot.sendMessage(chatId, `Promo-kod qo‘llanildi! ${promocode.discountPercent}% chegirma.`);
+        } catch (error) {
+          this.bot.sendMessage(chatId, 'Promo-kod topilmadi yoki amal qilish muddati tugagan.');
+        }
       }
     });
 
@@ -166,8 +175,12 @@ export class TelegramService {
         });
       } else if (data.startsWith('pay_')) {
         const [_, orderId, paymentType] = data.split('_');
-        const paymentLink = await this.paymentService.generatePaymentLink(parseInt(orderId), paymentType);
-        this.bot.sendMessage(chatId, `To‘lov havolasi: ${paymentLink}`);
+        try {
+          const paymentLink = await this.paymentService.generatePaymentLink(parseInt(orderId), paymentType);
+          this.bot.sendMessage(chatId, `To‘lov havolasi: ${paymentLink}`);
+        } catch (error) {
+          this.bot.sendMessage(chatId, 'To‘lov havolasini yaratishda xato yuz berdi.');
+        }
       } else if (data.startsWith('feedback_')) {
         const productId = parseInt(data.split('_')[1]);
         this.bot.sendMessage(chatId, 'Feedback qoldiring (1-5 yulduz va izoh):', {
@@ -175,13 +188,17 @@ export class TelegramService {
         });
         this.bot.once('message', async (msg) => {
           const [rating, ...comment] = msg.text.split(' ');
-          await this.feedbackService.create({
-            telegramId: msg.from.id.toString(),
-            productId,
-            rating: parseInt(rating),
-            comment: comment.join(' '),
-          });
-          this.bot.sendMessage(chatId, 'Feedback qabul qilindi!');
+          try {
+            await this.feedbackService.create({
+              telegramId: msg.from.id.toString(),
+              productId,
+              rating: parseInt(rating),
+              comment: comment.join(' '),
+            });
+            this.bot.sendMessage(chatId, 'Feedback qabul qilindi!');
+          } catch (error) {
+            this.bot.sendMessage(chatId, 'Feedback qoldirishda xato yuz berdi.');
+          }
         });
       } else if (data === 'clear_cart') {
         await this.cartService.clearCart(query.from.id.toString());
@@ -189,25 +206,46 @@ export class TelegramService {
       } else if (data === 'add_category') {
         this.bot.sendMessage(chatId, 'Yangi kategoriya nomini kiriting:', { reply_markup: { force_reply: true } });
         this.bot.once('message', async (msg) => {
-          await this.categoryService.create({ name: msg.text, description: '' });
-          this.bot.sendMessage(chatId, 'Kategoriya qo‘shildi.');
+          try {
+            await this.categoryService.create({ name: msg.text, description: '' });
+            this.bot.sendMessage(chatId, 'Kategoriya qo‘shildi.');
+          } catch (error) {
+            this.bot.sendMessage(chatId, 'Kategoriya qo‘shishda xato yuz berdi.');
+          }
         });
       } else if (data === 'add_product') {
-        this.bot.sendMessage(chatId, 'Mahsulot ma‘lumotlarini kiriting (nomi, narxi, tasviri, rasm URL, kategoriya ID):', {
-          reply_markup: { force_reply: true },
-        });
+        this.bot.sendMessage(
+          chatId,
+          'Mahsulot ma‘lumotlarini kiriting (nomi;narxi;tasviri;rasm URL;kategoriya ID). Vergul (,) ishlatmang, o‘rniga nuqta-vergul (;) ishlating:',
+          { reply_markup: { force_reply: true } },
+        );
         this.bot.once('message', async (msg) => {
-          const [name, price, description, imageUrl, categoryId] = msg.text.split(', ');
-          await this.productService.create({
-            name,
-            price: parseFloat(price),
-            description,
-            imageUrl,
-            categoryId: parseInt(categoryId),
-            stock: 10,
-            isActive: true,
-          });
-          this.bot.sendMessage(chatId, 'Mahsulot qo‘shildi.');
+          try {
+            const [name, price, description, imageUrl, categoryId] = msg.text.split(';');
+            const parsedCategoryId = parseInt(categoryId.trim());
+            if (isNaN(parsedCategoryId)) {
+              this.bot.sendMessage(chatId, 'Kategoriya ID noto‘g‘ri. Iltimos, raqam kiriting.');
+              return;
+            }
+            // Kategoriya mavjudligini tekshirish
+            const category = await this.categoryService.findOne(parsedCategoryId);
+            if (!category) {
+              this.bot.sendMessage(chatId, `Kategoriya ID ${parsedCategoryId} topilmadi.`);
+              return;
+            }
+            await this.productService.create({
+              name: name.trim(),
+              price: parseFloat(price.trim()),
+              description: description.trim(),
+              imageUrl: imageUrl.trim(),
+              categoryId: parsedCategoryId,
+              stock: 10,
+              isActive: true,
+            });
+            this.bot.sendMessage(chatId, 'Mahsulot qo‘shildi.');
+          } catch (error) {
+            this.bot.sendMessage(chatId, 'Mahsulot qo‘shishda xato yuz berdi: ' + error.message);
+          }
         });
       } else if (data === 'view_orders') {
         const orders = await this.orderService.findAll();
@@ -224,17 +262,21 @@ export class TelegramService {
         });
         this.bot.sendMessage(chatId, message);
       } else if (data === 'create_promocode') {
-        this.bot.sendMessage(chatId, 'Promo-kod ma‘lumotlarini kiriting (kod, foiz, amal qilish muddati yyyy-mm-dd):', {
+        this.bot.sendMessage(chatId, 'Promo-kod ma‘lumotlarini kiriting (kod;foiz;amal qilish muddati yyyy-mm-dd):', {
           reply_markup: { force_reply: true },
         });
         this.bot.once('message', async (msg) => {
-          const [code, discountPercent, validTill] = msg.text.split(', ');
-          await this.promocodeService.create({
-            code,
-            discountPercent: parseInt(discountPercent),
-            validTill: new Date(validTill),
-          });
-          this.bot.sendMessage(chatId, 'Promo-kod yaratildi.');
+          try {
+            const [code, discountPercent, validTill] = msg.text.split(';');
+            await this.promocodeService.create({
+              code: code.trim(),
+              discountPercent: parseInt(discountPercent.trim()),
+              validTill: new Date(validTill.trim()),
+            });
+            this.bot.sendMessage(chatId, 'Promo-kod yaratildi.');
+          } catch (error) {
+            this.bot.sendMessage(chatId, 'Promo-kod yaratishda xato yuz berdi: ' + error.message);
+          }
         });
       } else if (data === 'view_stats') {
         const stats = await this.orderService.getStats();
