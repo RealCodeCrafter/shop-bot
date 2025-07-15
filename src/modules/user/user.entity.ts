@@ -20,7 +20,7 @@ export class User {
   @Column({ default: false })
   isAdmin: boolean;
 
-  @Column()
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
   @OneToMany(() => Order, (order) => order.user, { cascade: true })
