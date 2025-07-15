@@ -11,7 +11,7 @@ import { Payment } from '../modules/payment/payment.entity';
 
 export const databaseConfig: TypeOrmModuleOptions = {
   type: 'postgres',
-  url: process.env.DATABASE_URL,
+  url: process.env.DATABASE_URL ||  "postgres://postgres:kzkKIsLBmILciwKoRmbLdZPtQawOsheO@switchback.proxy.rlwy.net:12532/railway",
   entities: [User, Category, Product, Cart, Order, OrderItem, Feedback, Promocode, Payment],
   synchronize: false,
   migrations: ['src/migrations/*.ts'],
