@@ -10,6 +10,9 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { PromocodeModule } from './modules/promocode/promocode.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 
 @Module({
   imports: [
@@ -21,7 +24,7 @@ import { TelegramModule } from './modules/telegram/telegram.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        url: configService.get<string>('DATABASE_URL'),
+        url: configService.get<string>('DATABASE_URL') || "postgres://postgres:kzkKIsLBmILciwKoRmbLdZPtQawOsheO@switchback.proxy.rlwy.net:12532/railway",
         autoLoadEntities: true,
         synchronize: true,
       }),
@@ -37,7 +40,7 @@ import { TelegramModule } from './modules/telegram/telegram.module';
     PaymentModule,
     PromocodeModule,
     TelegramModule,
-    
+
   ],
 })
 export class AppModule {}

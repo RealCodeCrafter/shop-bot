@@ -8,6 +8,8 @@ import { OrderService } from '../order/order.service';
 import { FeedbackService } from '../feedback/feedback.service';
 import { PromocodeService } from '../promocode/promocode.service';
 import { PaymentService } from '../payment/payment.service';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 @Injectable()
 export class TelegramService {
@@ -24,15 +26,17 @@ export class TelegramService {
     private promocodeService: PromocodeService,
     private paymentService: PaymentService,
   ) {
-    this.bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false });
+    this.bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN || "7942071036:AAFz_o_p2p2o-Gq-1C1YZMQSdODCHJiu2dY", { polling: false });
     this.setupWebhook();
     this.setupCommands();
   }
 
   private async setupWebhook() {
-    await this.bot.setWebHook(`${process.env.WEBHOOK_URL}`);
-    this.logger.log(`Webhook set to ${process.env.WEBHOOK_URL}`);
-  }
+    const webhookUrl = process.env.WEBHOOK_URL || "https://telegram-shop-bot-production.up.railway.app/telegram/webhook";
+    await this.bot.setWebHook(webhookUrl);
+    this.logger.log(`Webhook set to ${webhookUrl}`);
+}
+
 
   private setupCommands() {
     this.bot.onText(/\/start/, async (msg) => {
