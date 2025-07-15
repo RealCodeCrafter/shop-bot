@@ -16,10 +16,10 @@ export class TelegramController {
       this.logger.log(`Received webhook update: ${JSON.stringify(update, null, 2)}`);
       await this.telegramService.handleWebhookUpdate(update);
       this.logger.log('Webhook update processed successfully');
-      return { status: 'ok' }; // Telegram webhook uchun javob
+      return { status: 'ok' };
     } catch (error) {
       this.logger.error(`Webhook processing failed: ${error.message}`, error.stack);
-      throw error; // AllExceptionsFilter ushlaydi
+      throw error;
     }
   }
 }
