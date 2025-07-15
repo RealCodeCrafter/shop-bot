@@ -27,7 +27,7 @@ export class TelegramService {
     private paymentService: PaymentService,
   ) {
     this.bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN || "7942071036:AAFz_o_p2p2o-Gq-1C1YZMQSdODCHJiu2dY", {
-      polling: process.env.NODE_ENV !== 'production', // Mahalliy muhitda polling, production'da webhook
+      polling: false,
     });
     this.setupWebhook();
     this.setupCommands();
