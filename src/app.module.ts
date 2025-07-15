@@ -10,9 +10,6 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { PromocodeModule } from './modules/promocode/promocode.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
-import * as dotenv from 'dotenv';
-dotenv.config();
-
 
 @Module({
   imports: [
@@ -32,6 +29,9 @@ dotenv.config();
         ssl: {
           rejectUnauthorized: false,
         },
+        poolSize: 10,
+        connectionTimeoutMillis: 10000,
+        maxQueryExecutionTime: 5000,
       }),
     }),
     UserModule,

@@ -24,8 +24,8 @@ export class TelegramService {
     private promocodeService: PromocodeService,
     private paymentService: PaymentService,
   ) {
-    this.bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN || "7942071036:AAFz_o_p2p2o-Gq-1C1YZMQSdODCHJiu2dY", {
-      polling: true,
+    this.bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
+      polling: false,
     });
     this.setupWebhook();
     this.setupCommands();
@@ -35,8 +35,9 @@ export class TelegramService {
     if (process.env.NODE_ENV === 'production') {
       const webhookUrl = process.env.WEBHOOK_URL || "https://telegram-shop-bot-production.up.railway.app/telegram/webhook";
       try {
+        this.logger.log(`Setting webhook to ${webhookUrl}`);
         await this.bot.setWebHook(webhookUrl);
-        this.logger.log(`Webhook set to ${webhookUrl}`);
+        this.logger.log(`Webhook successfully set to ${webhookUrl}`);
       } catch (error) {
         this.logger.error(`Failed to set webhook: ${error.message}`, error.stack);
       }
@@ -51,8 +52,11 @@ export class TelegramService {
       const telegramId = msg.from.id.toString();
       const fullName = `${msg.from.first_name} ${msg.from.last_name || ''}`.trim();
       try {
-        this.logger.log(`Processing /start for telegramId: ${telegramId}`);
+        this.logger.log(`Processing /start for telegramId: ${telegramId}, fullName: ${fullName}`);
+        const startTime = Date.now();
         await this.userService.registerUser({ telegramId, fullName });
+        const duration = Date.now() - startTime;
+        this.logger.log(`User registered successfully for telegramId: ${telegramId} in ${duration}ms`);
         this.bot.sendMessage(chatId, `Xush kelibsiz, ${fullName}! 🛒 Do‘konimizga xush kelibsiz!`, {
           reply_markup: {
             keyboard: [[{ text: '📁 Kategoriyalar' }, { text: '🛒 Savatcha' }], [{ text: '👤 Profilim' }, { text: '🕘 Buyurtma tarixi' }]],
@@ -70,8 +74,12 @@ export class TelegramService {
       const telegramId = msg.from.id.toString();
       try {
         this.logger.log(`Processing /admin for telegramId: ${telegramId}`);
+        const startTime = Date.now();
         const user = await this.userService.findByTelegramId(telegramId);
+        const duration = Date.now() - startTime;
+        this.logger.log(`User fetched for /admin in ${duration}ms`);
         if (!user || !user.isAdmin) {
+          this.logger.warn(`Access denied for /admin, telegramId: ${telegramId}, isAdmin: ${user?.isAdmin}`);
           this.bot.sendMessage(chatId, 'Sizda admin huquqlari yo‘q.');
           return;
         }
@@ -99,15 +107,19 @@ export class TelegramService {
       try {
         this.logger.log(`Processing message: ${msg.text} from telegramId: ${telegramId}`);
         if (msg.text === '📁 Kategoriyalar') {
+          const startTime = Date.now();
           const categories = await this.categoryService.findAll();
-          this.logger.log(`Fetched ${categories.length} categories`);
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${categories.length} categories in ${duration}ms`);
           const keyboard = categories.map((cat) => [{ text: cat.name, callback_data: `category_${cat.id}` }]);
           this.bot.sendMessage(chatId, 'Kategoriyalarni tanlang:', {
             reply_markup: { inline_keyboard: keyboard },
           });
         } else if (msg.text === '🛒 Savatcha') {
+          const startTime = Date.now();
           const cartItems = await this.cartService.getCartItems(telegramId);
-          this.logger.log(`Fetched ${cartItems.length} cart items for telegramId: ${telegramId}`);
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${cartItems.length} cart items in ${duration}ms`);
           if (!cartItems.length) {
             this.bot.sendMessage(chatId, 'Savatchangiz bo‘sh.');
             return;
@@ -128,12 +140,16 @@ export class TelegramService {
             },
           });
         } else if (msg.text === '👤 Profilim') {
+          const startTime = Date.now();
           const user = await this.userService.findByTelegramId(telegramId);
-          this.logger.log(`Fetched user profile for telegramId: ${telegramId}`);
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched user profile in ${duration}ms`);
           this.bot.sendMessage(chatId, `Ism: ${user.fullName}\nTelefon: ${user.phone || 'Kiritilmagan'}\nBuyurtmalar soni: ${user.orders.length}`);
         } else if (msg.text === '🕘 Buyurtma tarixi') {
+          const startTime = Date.now();
           const orders = await this.orderService.getUserOrders(telegramId);
-          this.logger.log(`Fetched ${orders.length} orders for telegramId: ${telegramId}`);
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${orders.length} orders in ${duration}ms`);
           if (!orders.length) {
             this.bot.sendMessage(chatId, 'Sizda hali buyurtmalar yo‘q.');
             return;
@@ -149,8 +165,10 @@ export class TelegramService {
             this.bot.sendMessage(chatId, 'Iltimos, promo-kodni kiriting. Masalan: /promocode ABC123');
             return;
           }
-          this.logger.log(`Applying promocode: ${code} for telegramId: ${telegramId}`);
+          const startTime = Date.now();
           const promocode = await this.promocodeService.applyPromocode(code);
+          const duration = Date.now() - startTime;
+          this.logger.log(`Applied promocode ${code} in ${duration}ms`);
           this.bot.sendMessage(chatId, `Promo-kod qo‘llanildi! ${promocode.discountPercent}% chegirma.`);
         }
       } catch (error) {
@@ -167,18 +185,21 @@ export class TelegramService {
         this.logger.log(`Processing callback_query: ${data} from telegramId: ${telegramId}`);
         if (data.startsWith('category_')) {
           const categoryId = parseInt(data.split('_')[1]);
+          const startTime = Date.now();
           const products = await this.productService.findByCategory(categoryId);
-          this.logger.log(`Fetched ${products.length} products for categoryId: ${categoryId}`);
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${products.length} products for categoryId: ${categoryId} in ${duration}ms`);
           const keyboard = products.map((prod) => [
             { text: `${prod.name} - ${prod.price} so‘m`, callback_data: `product_${prod.id}` },
           ]);
           this.bot.sendMessage(chatId, 'Mahsulotlar:', { reply_markup: { inline_keyboard: keyboard } });
         } else if (data.startsWith('product_')) {
           const productId = parseInt(data.split('_')[1]);
+          const startTime = Date.now();
           const product = await this.productService.findOne(productId);
-          this.logger.log(`Fetched productId: ${productId}`);
-          this.bot.sendPhoto(chatId, product.imageUrl, {
-            caption: `${product.name}\n${product.description}\nNarxi: ${product.price} so‘m`,
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched productId: ${productId} in ${duration}ms`);
+          this.bot.sendMessage(chatId, `${product.name}\n${product.description}\nNarxi: ${product.price} so‘m`, {
             reply_markup: {
               inline_keyboard: [
                 [{ text: '➕ Savatchaga qo‘shish', callback_data: `addtocart_${productId}` }],
@@ -188,12 +209,16 @@ export class TelegramService {
           });
         } else if (data.startsWith('addtocart_')) {
           const productId = parseInt(data.split('_')[1]);
-          this.logger.log(`Adding to cart productId: ${productId} for telegramId: ${telegramId}`);
+          const startTime = Date.now();
           await this.cartService.addToCart({ telegramId, productId, quantity: 1 });
+          const duration = Date.now() - startTime;
+          this.logger.log(`Added to cart productId: ${productId} for telegramId: ${telegramId} in ${duration}ms`);
           this.bot.sendMessage(chatId, 'Mahsulot savatchaga qo‘shildi.');
         } else if (data === 'place_order') {
-          this.logger.log(`Creating order for telegramId: ${telegramId}`);
+          const startTime = Date.now();
           const order = await this.orderService.createOrder(telegramId);
+          const duration = Date.now() - startTime;
+          this.logger.log(`Created order for telegramId: ${telegramId} in ${duration}ms`);
           this.bot.sendMessage(chatId, `Buyurtma yaratildi. ID: ${order.id}`, {
             reply_markup: {
               inline_keyboard: [
@@ -204,8 +229,10 @@ export class TelegramService {
           });
         } else if (data.startsWith('pay_')) {
           const [_, orderId, paymentType] = data.split('_');
-          this.logger.log(`Generating payment link for orderId: ${orderId}, paymentType: ${paymentType}`);
+          const startTime = Date.now();
           const paymentLink = await this.paymentService.generatePaymentLink(parseInt(orderId), paymentType);
+          const duration = Date.now() - startTime;
+          this.logger.log(`Generated payment link for orderId: ${orderId}, paymentType: ${paymentType} in ${duration}ms`);
           this.bot.sendMessage(chatId, `To‘lov havolasi: ${paymentLink}`);
         } else if (data.startsWith('feedback_')) {
           const productId = parseInt(data.split('_')[1]);
@@ -215,13 +242,15 @@ export class TelegramService {
           this.bot.once('message', async (msg) => {
             try {
               const [rating, ...comment] = msg.text.split(' ');
-              this.logger.log(`Creating feedback for productId: ${productId}, telegramId: ${telegramId}`);
+              const startTime = Date.now();
               await this.feedbackService.create({
                 telegramId: msg.from.id.toString(),
                 productId,
                 rating: parseInt(rating),
                 comment: comment.join(' '),
               });
+              const duration = Date.now() - startTime;
+              this.logger.log(`Created feedback for productId: ${productId} in ${duration}ms`);
               this.bot.sendMessage(chatId, 'Feedback qabul qilindi!');
             } catch (error) {
               this.logger.error(`Error in feedback for productId: ${productId}: ${error.message}`, error.stack);
@@ -229,15 +258,19 @@ export class TelegramService {
             }
           });
         } else if (data === 'clear_cart') {
-          this.logger.log(`Clearing cart for telegramId: ${telegramId}`);
+          const startTime = Date.now();
           await this.cartService.clearCart(telegramId);
+          const duration = Date.now() - startTime;
+          this.logger.log(`Cleared cart for telegramId: ${telegramId} in ${duration}ms`);
           this.bot.sendMessage(chatId, 'Savatcha tozalandi.');
         } else if (data === 'add_category') {
           this.bot.sendMessage(chatId, 'Yangi kategoriya nomini kiriting:', { reply_markup: { force_reply: true } });
           this.bot.once('message', async (msg) => {
             try {
-              this.logger.log(`Creating category with name: ${msg.text}`);
+              const startTime = Date.now();
               await this.categoryService.create({ name: msg.text, description: '' });
+              const duration = Date.now() - startTime;
+              this.logger.log(`Created category with name: ${msg.text} in ${duration}ms`);
               this.bot.sendMessage(chatId, 'Kategoriya qo‘shildi.');
             } catch (error) {
               this.logger.error(`Error in add_category: ${error.message}`, error.stack);
@@ -258,12 +291,15 @@ export class TelegramService {
                 this.bot.sendMessage(chatId, 'Kategoriya ID noto‘g‘ri. Iltimos, raqam kiriting.');
                 return;
               }
-              this.logger.log(`Creating product with categoryId: ${parsedCategoryId}`);
+              const startTime = Date.now();
               const category = await this.categoryService.findOne(parsedCategoryId);
+              const catDuration = Date.now() - startTime;
+              this.logger.log(`Fetched categoryId: ${parsedCategoryId} in ${catDuration}ms`);
               if (!category) {
                 this.bot.sendMessage(chatId, `Kategoriya ID ${parsedCategoryId} topilmadi.`);
                 return;
               }
+              const prodStartTime = Date.now();
               await this.productService.create({
                 name: name.trim(),
                 price: parseFloat(price.trim()),
@@ -273,6 +309,8 @@ export class TelegramService {
                 stock: 10,
                 isActive: true,
               });
+              const prodDuration = Date.now() - prodStartTime;
+              this.logger.log(`Created product with categoryId: ${parsedCategoryId} in ${prodDuration}ms`);
               this.bot.sendMessage(chatId, 'Mahsulot qo‘shildi.');
             } catch (error) {
               this.logger.error(`Error in add_product: ${error.message}`, error.stack);
@@ -280,16 +318,20 @@ export class TelegramService {
             }
           });
         } else if (data === 'view_orders') {
+          const startTime = Date.now();
           const orders = await this.orderService.findAll();
-          this.logger.log(`Fetched ${orders.length} orders`);
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${orders.length} orders in ${duration}ms`);
           let message = 'Buyurtmalar:\n';
           orders.forEach((order) => {
             message += `ID: ${order.id}, Jami: ${order.totalAmount} so‘m, Status: ${order.status}\n`;
           });
           this.bot.sendMessage(chatId, message);
         } else if (data === 'view_feedback') {
+          const startTime = Date.now();
           const feedbacks = await this.feedbackService.findAll();
-          this.logger.log(`Fetched ${feedbacks.length} feedbacks`);
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${feedbacks.length} feedbacks in ${duration}ms`);
           let message = 'Feedbacklar:\n';
           feedbacks.forEach((fb) => {
             message += `Mahsulot ID: ${fb.product.id}, Reyting: ${fb.rating}, Izoh: ${fb.comment}\n`;
@@ -302,12 +344,14 @@ export class TelegramService {
           this.bot.once('message', async (msg) => {
             try {
               const [code, discountPercent, validTill] = msg.text.split(';');
-              this.logger.log(`Creating promocode: ${code}`);
+              const startTime = Date.now();
               await this.promocodeService.create({
                 code: code.trim(),
                 discountPercent: parseInt(discountPercent.trim()),
                 validTill: new Date(validTill.trim()),
               });
+              const duration = Date.now() - startTime;
+              this.logger.log(`Created promocode: ${code} in ${duration}ms`);
               this.bot.sendMessage(chatId, 'Promo-kod yaratildi.');
             } catch (error) {
               this.logger.error(`Error in create_promocode: ${error.message}`, error.stack);
@@ -315,8 +359,10 @@ export class TelegramService {
             }
           });
         } else if (data === 'view_stats') {
+          const startTime = Date.now();
           const stats = await this.orderService.getStats();
-          this.logger.log(`Fetched stats: totalOrders=${stats.totalOrders}, totalAmount=${stats.totalAmount}`);
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched stats: totalOrders=${stats.totalOrders}, totalAmount=${stats.totalAmount} in ${duration}ms`);
           this.bot.sendMessage(chatId, `Jami buyurtmalar: ${stats.totalOrders}\nJami summa: ${stats.totalAmount} so‘m`);
         }
       } catch (error) {
@@ -329,8 +375,10 @@ export class TelegramService {
   async handleWebhookUpdate(update: TelegramBot.Update) {
     try {
       this.logger.log(`Processing webhook update: ${JSON.stringify(update, null, 2)}`);
+      const startTime = Date.now();
       await this.bot.processUpdate(update);
-      this.logger.log('Webhook update processed successfully');
+      const duration = Date.now() - startTime;
+      this.logger.log(`Webhook update processed successfully in ${duration}ms`);
     } catch (error) {
       this.logger.error(`Webhook update failed: ${error.message}`, error.stack);
       throw error;
