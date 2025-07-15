@@ -34,15 +34,14 @@ export class TelegramService {
   }
 
   private async setupWebhook() {
-    if (process.env.NODE_ENV === 'production') {
-      const webhookUrl = process.env.WEBHOOK_URL || "https://telegram-shop-bot-production.up.railway.app/telegram/webhook";
-      await this.bot.setWebHook(webhookUrl);
-      this.logger.log(`Webhook set to ${webhookUrl}`);
-    } else {
-      this.logger.log('Polling mode enabled for development');
-    }
+  if (process.env.NODE_ENV === 'production') {
+    const webhookUrl = process.env.WEBHOOK_URL || "https://telegram-shop-bot-production.up.railway.app/telegram/webhook";
+    await this.bot.setWebHook(webhookUrl);
+    this.logger.log(`Webhook set to ${webhookUrl}`);
+  } else {
+    this.logger.log('Polling mode enabled for development');
   }
-
+  }
   private setupCommands() {
     this.bot.onText(/\/start/, async (msg) => {
       const chatId = msg.chat.id;

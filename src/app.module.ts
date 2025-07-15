@@ -24,20 +24,16 @@ dotenv.config();
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        host: 'switchback.proxy.rlwy.net',
-        port: 12532,
-        username: 'postgres',
-        password: 'kzkKIsLBmILciwKoRmbLdZPtQawOsheO',
-        database: 'railway',
-        autoLoadEntities: true,
-        synchronize: true,
-    ssl: {
-      rejectUnauthorized: false,
-    },
+        url: configService.get<string>('DATABASE_URL'),
+        entities: ['dist/**/*.entity{.ts,.js}'],
+        migrations: ['dist/migrations/*{.ts,.js}'],
+        synchronize: false,
+        migrationsRun: true,
+        ssl: {
+          rejectUnauthorized: false,
+        },
       }),
     }),
-
-
     UserModule,
     CategoryModule,
     ProductModule,
@@ -47,7 +43,6 @@ dotenv.config();
     PaymentModule,
     PromocodeModule,
     TelegramModule,
-
   ],
 })
 export class AppModule {}
