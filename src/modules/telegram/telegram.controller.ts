@@ -13,11 +13,13 @@ export class TelegramController {
   @Post('webhook')
   async handleWebhook(@Body() update: TelegramBot.Update) {
     try {
+      this.logger.log(`Received webhook update: ${JSON.stringify(update, null, 2)}`);
       await this.telegramService.handleWebhookUpdate(update);
       this.logger.log('Webhook update processed successfully');
+      return { status: 'ok' }; // Telegram webhook uchun javob
     } catch (error) {
       this.logger.error(`Webhook processing failed: ${error.message}`, error.stack);
-      throw error; 
+      throw error; // AllExceptionsFilter ushlaydi
     }
   }
 }
