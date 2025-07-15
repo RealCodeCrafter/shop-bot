@@ -9,19 +9,20 @@ export class TelegramController {
   private readonly logger = new Logger(TelegramController.name);
 
   constructor(private readonly telegramService: TelegramService) {}
+@Post('webhook')
+async handleWebhook(@Body() update: TelegramBot.Update) {
+  try {
+    this.logger.log(`Received webhook update: ${JSON.stringify(update, null, 2)}`);
+    this.telegramService.handleWebhookUpdate(update)
+      .then(() => this.logger.log('Webhook update processed successfully'))
+      .catch((error) => this.logger.error(`Webhook update failed: ${error.message}`, error.stack));
 
-  @Post('webhook')
-  async handleWebhook(@Body() update: TelegramBot.Update) {
-    try {
-      this.logger.log(`Received webhook update: ${JSON.stringify(update, null, 2)}`);
-      await this.telegramService.handleWebhookUpdate(update);
-      this.logger.log('Webhook update processed successfully');
-      return { status: 'ok' };
-    } catch (error) {
-      this.logger.error(`Webhook processing failed: ${error.message}`, error.stack);
-      throw error;
-    }
+    return { status: 'ok' };
+  } catch (error) {
+    this.logger.error(`Webhook processing failed: ${error.message}`, error.stack);
+    throw error;
   }
+}
 
   @Get('webhook')
   async getWebhookCheck() {
