@@ -26,6 +26,8 @@ import { TelegramModule } from './modules/telegram/telegram.module';
         synchronize: true,
       }),
     }),
+
+
     UserModule,
     CategoryModule,
     ProductModule,
@@ -35,6 +37,7 @@ import { TelegramModule } from './modules/telegram/telegram.module';
     PaymentModule,
     PromocodeModule,
     TelegramModule,
+    
   ],
 })
 export class AppModule {}
