@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Body, Logger } from '@nestjs/common';
 import { TelegramService } from './telegram.service';
 import { ApiTags } from '@nestjs/swagger';
 import * as TelegramBot from 'node-telegram-bot-api';
@@ -21,5 +21,11 @@ export class TelegramController {
       this.logger.error(`Webhook processing failed: ${error.message}`, error.stack);
       throw error;
     }
+  }
+
+  @Get('webhook')
+  async getWebhookCheck() {
+    this.logger.log('Received GET request on /telegram/webhook');
+    return { status: 'Webhook is live' };
   }
 }
