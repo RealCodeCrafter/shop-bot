@@ -10,10 +10,18 @@ import { Promocode } from '../modules/promocode/promocode.entity';
 import { Payment } from '../modules/payment/payment.entity';
 
 export const databaseConfig: TypeOrmModuleOptions = {
-  type: 'postgres',
-  url: process.env.DATABASE_URL ||  "postgres://postgres:kzkKIsLBmILciwKoRmbLdZPtQawOsheO@switchback.proxy.rlwy.net:12532/railway",
+    type: 'postgres',
+    host: 'switchback.proxy.rlwy.net',
+    port: 12532,
+    username: 'postgres',
+    password: 'kzkKIsLBmILciwKoRmbLdZPtQawOsheO',
+    database: 'railway',
+    autoLoadEntities: true,
+    ssl: {
+      rejectUnauthorized: false,
+    },
   entities: [User, Category, Product, Cart, Order, OrderItem, Feedback, Promocode, Payment],
-  synchronize: false,
+  synchronize: true,
   migrations: ['src/migrations/*.ts'],
   migrationsRun: true,
 };

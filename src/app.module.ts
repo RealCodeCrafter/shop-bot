@@ -24,9 +24,16 @@ dotenv.config();
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        url: configService.get<string>('DATABASE_URL') || "postgres://postgres:kzkKIsLBmILciwKoRmbLdZPtQawOsheO@switchback.proxy.rlwy.net:12532/railway",
+        host: 'switchback.proxy.rlwy.net',
+        port: 12532,
+        username: 'postgres',
+        password: 'kzkKIsLBmILciwKoRmbLdZPtQawOsheO',
+        database: 'railway',
         autoLoadEntities: true,
         synchronize: true,
+    ssl: {
+      rejectUnauthorized: false,
+    },
       }),
     }),
 
