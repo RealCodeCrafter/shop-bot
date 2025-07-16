@@ -15,9 +15,11 @@ import { CartHandler } from './handlers/cart.handler';
 import { HelpHandler } from './handlers/help.handler';
 import { AdminHandler } from './handlers/admin.handler';
 import { CallbackHandler } from './handlers/callback.handler';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule,
     UserModule,
     CategoryModule,
     ProductModule,
