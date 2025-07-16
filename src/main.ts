@@ -1,6 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
+
+import * as crypto from 'crypto';
+import { AllExceptionsFilter } from './common/error.filter';
+if (!(global as any).crypto) {
+  (global as any).crypto = crypto;
+}
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -11,7 +17,10 @@ async function bootstrap() {
       logger.log('Health check endpoint called');
       res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
     });
-    const port = 3000; // PORT ni qattiq yozamiz
+    
+  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalFilters(new AllExceptionsFilter());
+    const port = 3000;
     await app.listen(port);
     logger.log(`Application is running on port ${port}`);
   } catch (error) {
