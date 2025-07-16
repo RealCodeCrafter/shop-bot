@@ -106,27 +106,44 @@ export class TelegramService {
   }
 });
 
+
+
     this.bot.onText(/\/about/, async (msg) => {
       const chatId = msg.chat.id;
       this.bot.sendMessage(chatId, 'ℹ️ Biz haqimizda\nBiz onlayn do‘konmiz, sifatli mahsulotlar va tezkor xizmat taklif qilamiz!\nAloqa: @YourShopSupport\nVeb-sayt: https://yourshop.uz');
     });
 
     this.bot.onText(/\/help/, async (msg) => {
-      const chatId = msg.chat.id;
-      this.bot.sendMessage(chatId, `🆘 Yordam\nSavollaringiz bo‘lsa, admin bilan bog‘laning: @${this.adminTelegramUser}\nYoki xabar yozing:`, {
-        reply_markup: { force_reply: true },
-      });
-      this.bot.once('message', async (msg) => {
-        try {
-          await this.bot.sendMessage(this.adminTelegramId, `Yordam so‘rovi:\nFoydalanuvchi: ${msg.from.id}\nXabar: ${msg.text}`);
-          this.bot.sendMessage(chatId, 'Sizning xabaringiz adminga yuborildi. Tez orada javob olasiz!');
-        } catch (error) {
-          this.logger.error(`Error sending help request: ${error.message}`, error.stack);
-          this.bot.sendMessage(chatId, 'Xabar yuborishda xato yuz berdi.');
-        }
-      });
+  const chatId = msg.chat.id;
+  const telegramId = msg.from.id.toString();
+  try {
+    await this.bot.sendMessage(chatId, `🆘 Yordam\nSavollaringiz bo‘lsa, admin bilan bog‘laning: @${this.adminTelegramUser}\nYoki xabar yozing:`, {
+      reply_markup: { force_reply: true },
     });
-
+    this.bot.once('message', async (replyMsg) => {
+      const replyText = replyMsg.text;
+      if (!replyText) {
+        this.logger.log(`Ignoring empty help message from telegramId: ${telegramId}`);
+        await this.bot.sendMessage(chatId, 'Iltimos, xabar yozing.');
+        return;
+      }
+      try {
+        await this.bot.sendMessage(this.adminTelegramId, `Yordam so‘rovi:\nFoydalanuvchi: ${replyMsg.from.id} (@${replyMsg.from.username || 'N/A'})\nXabar: ${replyText}`);
+        await this.bot.sendMessage(chatId, 'Sizning xabaringiz adminga yuborildi. Tez orada javob olasiz!');
+      } catch (error) {
+        this.logger.error(`Error sending help request to adminTelegramId: ${this.adminTelegramId}, message: ${replyText}, error: ${error.message}`, error.stack);
+        if (error.response?.body?.error_code === 403) {
+          await this.bot.sendMessage(chatId, `Admin (@${this.adminTelegramUser}) bilan chat boshlanmagan. Iltimos, admin bilan bog‘laning va botni ishga tushiring (@${this.adminTelegramUser}).`);
+        } else {
+          await this.bot.sendMessage(chatId, `Xabar yuborishda xato yuz berdi: ${error.message}. Iltimos, keyinroq urinib ko‘ring yoki @${this.adminTelegramUser} ga yozing.`);
+        }
+      }
+    });
+  } catch (error) {
+    this.logger.error(`Error in /help handler: ${error.message}`, error.stack);
+    await this.bot.sendMessage(chatId, 'Yordam so‘rovini boshlashda xato yuz berdi. Iltimos, @${this.adminTelegramUser} ga yozing.');
+  }
+});
     this.bot.onText(/\/admin/, async (msg) => {
       const chatId = msg.chat.id;
       const telegramId = msg.from.id.toString();
