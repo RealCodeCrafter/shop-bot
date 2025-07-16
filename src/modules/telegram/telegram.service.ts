@@ -191,20 +191,22 @@ export class TelegramService {
             { text: `${prod.name} - ${prod.price} so‘m`, callback_data: `product_${prod.id}` },
           ]);
           this.bot.sendMessage(chatId, 'Mahsulotlar:', { reply_markup: { inline_keyboard: keyboard } });
-        } else if (data.startsWith('product_')) {
-          const productId = parseInt(data.split('_')[1]);
-          const startTime = Date.now();
-          const product = await this.productService.findOne(productId);
-          const duration = Date.now() - startTime;
-          this.logger.log(`Fetched productId: ${productId} in ${duration}ms`);
-          this.bot.sendMessage(chatId, `${product.name}\n${product.description}\nNarxi: ${product.price} so‘m`, {
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: '➕ Savatchaga qo‘shish', callback_data: `addtocart_${productId}` }],
-                [{ text: '⭐ Feedback qoldirish', callback_data: `feedback_${productId}` }],
-              ],
-            },
-          });
+        }else if (data.startsWith('product_')) {
+  const productId = parseInt(data.split('_')[1]);
+  const startTime = Date.now();
+  const product = await this.productService.findOne(productId);
+  const duration = Date.now() - startTime;
+  this.logger.log(`Fetched productId: ${productId} in ${duration}ms`);
+
+  this.bot.sendPhoto(chatId, product.imageUrl, {
+    caption: `${product.name}\n${product.description}\nNarxi: ${product.price} so‘m`,
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '➕ Savatchaga qo‘shish', callback_data: `addtocart_${productId}` }],
+        [{ text: '⭐ Feedback qoldirish', callback_data: `feedback_${productId}` }],
+      ],
+    },
+  });
         } else if (data.startsWith('addtocart_')) {
           const productId = parseInt(data.split('_')[1]);
           const startTime = Date.now();
