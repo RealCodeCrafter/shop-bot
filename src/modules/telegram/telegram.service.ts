@@ -13,7 +13,7 @@ import { PaymentService } from '../payment/payment.service';
 export class TelegramService {
   private bot: TelegramBot;
   private logger = new Logger(TelegramService.name);
-  private readonly adminTelegramId = 5661241603;
+  private readonly adminTelegramId = "5661241603";
   private readonly adminTelegramUser = 'Vali_003';
 
   constructor(
@@ -159,7 +159,6 @@ export class TelegramService {
             return;
           }
           try {
-            // Admin'ga xabar yuborishdan oldin chat holatini tekshirish
             await this.bot.sendChatAction(this.adminTelegramId, 'typing');
             await this.bot.sendMessage(this.adminTelegramId, `Yordam so‘rovi:\nFoydalanuvchi: ${replyMsg.from.id} (@${replyMsg.from.username || 'N/A'})\nXabar: ${replyText}`);
             await this.bot.sendMessage(chatId, `Sizning xabaringiz adminga (@${this.adminTelegramUser}) yuborildi. Tez orada javob olasiz!`);
@@ -296,7 +295,7 @@ export class TelegramService {
     } else if (text === 'ℹ️ Biz haqimizda') {
       this.bot.sendMessage(chatId, 'ℹ️ Biz haqimizda\nBiz onlayn do‘konmiz, sifatli mahsulotlar va tezkor xizmat taklif qilamiz!\nAloqa: @YourShopSupport\nVeb-sayt: https://yourshop.uz');
     } else if (text === '🆘 Yordam') {
-      this.bot.sendMessage(chatId, `🆘 Yordam\nSavollaringiz bo‘lsa, admin bilan bog‘laning: @${this.adminTelegramId}\nYoki xabar yozing:`, {
+      this.bot.sendMessage(chatId, `🆘 Yordam\nSavollaringiz bo‘lsa, admin bilan bog‘laning: @${this.adminTelegramUser}\nYoki xabar yozing:`, {
         reply_markup: { force_reply: true },
       });
       this.bot.once('message', async (msg) => {
