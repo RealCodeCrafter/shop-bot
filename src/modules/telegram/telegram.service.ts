@@ -262,19 +262,28 @@ export class TelegramService {
           this.logger.log(`Cleared cart for telegramId: ${telegramId} in ${duration}ms`);
           this.bot.sendMessage(chatId, 'Savatcha tozalandi.');
         } else if (data === 'add_category') {
-          this.bot.sendMessage(chatId, 'Yangi kategoriya nomini kiriting:', { reply_markup: { force_reply: true } });
-          this.bot.once('message', async (msg) => {
-            try {
-              const startTime = Date.now();
-              await this.categoryService.create({ name: msg.text, description: '' });
-              const duration = Date.now() - startTime;
-              this.logger.log(`Created category with name: ${msg.text} in ${duration}ms`);
-              this.bot.sendMessage(chatId, 'Kategoriya qo‘shildi.');
-            } catch (error) {
-              this.logger.error(`Error in add_category: ${error.message}`, error.stack);
-              this.bot.sendMessage(chatId, 'Kategoriya qo‘shishda xato yuz berdi.');
-            }
-          });
+  this.bot.sendMessage(chatId, 'Kategoriya nomini kiriting:', { reply_markup: { force_reply: true } });
+
+  this.bot.once('message', async (msgName) => {
+    const name = msgName.text;
+    this.bot.sendMessage(chatId, 'Kategoriya tavsifini (description) kiriting:', { reply_markup: { force_reply: true } });
+
+    this.bot.once('message', async (msgDesc) => {
+      const description = msgDesc.text;
+
+      try {
+        const startTime = Date.now();
+        await this.categoryService.create({ name, description });
+        const duration = Date.now() - startTime;
+        this.logger.log(`Created category with name: ${name} in ${duration}ms`);
+        this.bot.sendMessage(chatId, 'Kategoriya muvaffaqiyatli qo‘shildi!');
+      } catch (error) {
+        this.logger.error(`Error in add_category: ${error.message}`, error.stack);
+        this.bot.sendMessage(chatId, 'Kategoriya qo‘shishda xato yuz berdi.');
+      }
+    });
+      });
+
         } else if (data === 'add_product') {
           this.bot.sendMessage(
             chatId,
