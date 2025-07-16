@@ -129,21 +129,22 @@ export class TelegramService {
       }
       try {
         await this.bot.sendMessage(this.adminTelegramId, `Yordam so‘rovi:\nFoydalanuvchi: ${replyMsg.from.id} (@${replyMsg.from.username || 'N/A'})\nXabar: ${replyText}`);
-        await this.bot.sendMessage(chatId, 'Sizning xabaringiz adminga yuborildi. Tez orada javob olasiz!');
+        await this.bot.sendMessage(chatId, 'Sizning xabaringiz adminga (@${this.adminTelegramUser}) yuborildi. Tez orada javob olasiz!');
       } catch (error) {
         this.logger.error(`Error sending help request to adminTelegramId: ${this.adminTelegramId}, message: ${replyText}, error: ${error.message}`, error.stack);
         if (error.response?.body?.error_code === 403) {
-          await this.bot.sendMessage(chatId, `Admin (@${this.adminTelegramUser}) bilan chat boshlanmagan. Iltimos, admin bilan bog‘laning va botni ishga tushiring (@${this.adminTelegramUser}).`);
+          await this.bot.sendMessage(chatId, `Xabar yuborishda xato: Admin (@${this.adminTelegramUser}) bot bilan chat boshlamagan. Iltimos, @${this.adminTelegramUser} ga yozing va botni ishga tushiring (/start).`);
         } else {
-          await this.bot.sendMessage(chatId, `Xabar yuborishda xato yuz berdi: ${error.message}. Iltimos, keyinroq urinib ko‘ring yoki @${this.adminTelegramUser} ga yozing.`);
+          await this.bot.sendMessage(chatId, `Xabar yuborishda xato yuz berdi: ${error.message}. Iltimos, @${this.adminTelegramUser} ga to‘g‘ridan-to‘g‘ri yozing.`);
         }
       }
     });
   } catch (error) {
     this.logger.error(`Error in /help handler: ${error.message}`, error.stack);
-    await this.bot.sendMessage(chatId, 'Yordam so‘rovini boshlashda xato yuz berdi. Iltimos, @${this.adminTelegramUser} ga yozing.');
+    await this.bot.sendMessage(chatId, `Yordam so‘rovini boshlashda xato yuz berdi. Iltimos, @${this.adminTelegramUser} ga to‘g‘ridan-to‘g‘ri yozing.`);
   }
 });
+
     this.bot.onText(/\/admin/, async (msg) => {
       const chatId = msg.chat.id;
       const telegramId = msg.from.id.toString();
