@@ -180,101 +180,105 @@ export class TelegramService {
     });
 
     this.bot.on('message', async (msg) => {
-      const chatId = msg.chat.id;
-      const telegramId = msg.from.id.toString();
-      const text = msg.text;
-      try {
-        this.logger.log(`Processing message: ${text} from telegramId: ${telegramId}`);
-        if (text === '📁 Kategoriyalar') {
-          const startTime = Date.now();
-          const categories = await this.categoryService.findAll();
-          const duration = Date.now() - startTime;
-          this.logger.log(`Fetched ${categories.length} categories in ${duration}ms`);
-          const keyboard = categories.map((cat) => [{ text: cat.name, callback_data: `category_${cat.id}` }]);
-          this.bot.sendMessage(chatId, 'Kategoriyalarni tanlang:', {
-            reply_markup: { inline_keyboard: keyboard },
-          });
-        } else if (text === '🛒 Savatcha') {
-          const startTime = Date.now();
-          const cartItems = await this.cartService.getCartItems(telegramId);
-          const duration = Date.now() - startTime;
-          this.logger.log(`Fetched ${cartItems.length} cart items in ${duration}ms`);
-          if (!cartItems.length) {
-            this.bot.sendMessage(chatId, 'Savatchangiz bo‘sh.');
-            return;
-          }
-          let message = 'Savatchangiz:\n';
-          let total = 0;
-          cartItems.forEach((item) => {
-            message += `${item.product.name} - ${item.quantity} dona, Narxi: ${item.product.price * item.quantity} so‘m\n`;
-            total += item.product.price * item.quantity;
-          });
-          message += `Jami: ${total} so‘m`;
-          this.bot.sendMessage(chatId, message, {
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: '✅ Buyurtma berish', callback_data: 'place_order' }],
-                [{ text: '🗑️ Savatchani tozalash', callback_data: 'clear_cart' }],
-              ],
-            },
-          });
-        } else if (text === '👤 Profilim') {
-          const startTime = Date.now();
-          const user = await this.userService.findByTelegramId(telegramId);
-          const duration = Date.now() - startTime;
-          this.logger.log(`Fetched user profile in ${duration}ms`);
-          this.bot.sendMessage(chatId, `Ism: ${user.fullName}\nTelefon: ${user.phone || 'Kiritilmagan'}\nBuyurtmalar soni: ${user.orders.length}`);
-        } else if (text === '🕘 Buyurtma tarixi') {
-          const startTime = Date.now();
-          const orders = await this.orderService.getUserOrders(telegramId);
-          const duration = Date.now() - startTime;
-          this.logger.log(`Fetched ${orders.length} orders in ${duration}ms`);
-          if (!orders.length) {
-            this.bot.sendMessage(chatId, 'Sizda hali buyurtmalar yo‘q.');
-            return;
-          }
-          let message = 'Buyurtma tarixingiz:\n';
-          orders.forEach((order) => {
-            message += `ID: ${order.id}, Jami: ${order.totalAmount} so‘m, Status: ${order.status}\n`;
-          });
-          this.bot.sendMessage(chatId, message);
-        } else if (text === 'ℹ️ Biz haqimizda') {
-          this.bot.sendMessage(chatId, 'ℹ️ Biz haqimizda\nBiz onlayn do‘konmiz, sifatli mahsulotlar va tezkor xizmat taklif qilamiz!\nAloqa: @YourShopSupport\nVeb-sayt: https://yourshop.uz');
-        } else if (text === '🆘 Yordam') {
-          this.bot.sendMessage(chatId, `🆘 Yordam\nSavollaringiz bo‘lsa, admin bilan bog‘laning: @${this.adminTelegramId}\nYoki xabar yozing:`, {
-            reply_markup: { force_reply: true },
-          });
-          this.bot.once('message', async (msg) => {
-            try {
-              await this.bot.sendMessage(this.adminTelegramId, `Yordam so‘rovi:\nFoydalanuvchi: ${msg.from.id}\nXabar: ${msg.text}`);
-              this.bot.sendMessage(chatId, 'Sizning xabaringiz adminga yuborildi. Tez orada javob olasiz!');
-            } catch (error) {
-              this.logger.error(`Error sending help request: ${error.message}`, error.stack);
-              this.bot.sendMessage(chatId, 'Xabar yuborishda xato yuz berdi.');
-            }
-          });
-        } else if (text.startsWith('/promocode')) {
-          const code = msg.text.split(' ')[1];
-          if (!code) {
-            this.bot.sendMessage(chatId, 'Iltimos, promo-kodni kiriting. Masalan: /promocode ABC123');
-            return;
-          }
-          try {
-            const startTime = Date.now();
-            const promocode = await this.promocodeService.applyPromocode(code);
-            const duration = Date.now() - startTime;
-            this.logger.log(`Applied promocode ${code} in ${duration}ms`);
-            this.bot.sendMessage(chatId, `Promo-kod qo‘llanildi! ${promocode.discountPercent}% chegirma.`);
-          } catch (error) {
-            this.logger.error(`Error applying promocode: ${error.message}`, error.stack);
-            this.bot.sendMessage(chatId, 'Promo-kodni qo‘llashda xato yuz berdi.');
-          }
-        }
-      } catch (error) {
-        this.logger.error(`Error in message handler: ${error.message}`, error.stack);
-        this.bot.sendMessage(chatId, 'Xatolik yuz berdi, iltimos keyinroq urinib ko‘ring.');
+  const chatId = msg.chat.id;
+  const telegramId = msg.from.id.toString();
+  const text = msg.text;
+  if (!text) {
+    this.logger.log(`Ignoring message without text from telegramId: ${telegramId}`);
+    return; // Agar text bo‘lmasa, hech narsa qilmaymiz
+  }
+  try {
+    this.logger.log(`Processing message: ${text} from telegramId: ${telegramId}`);
+    if (text === '📁 Kategoriyalar') {
+      const startTime = Date.now();
+      const categories = await this.categoryService.findAll();
+      const duration = Date.now() - startTime;
+      this.logger.log(`Fetched ${categories.length} categories in ${duration}ms`);
+      const keyboard = categories.map((cat) => [{ text: cat.name, callback_data: `category_${cat.id}` }]);
+      this.bot.sendMessage(chatId, 'Kategoriyalarni tanlang:', {
+        reply_markup: { inline_keyboard: keyboard },
+      });
+    } else if (text === '🛒 Savatcha') {
+      const startTime = Date.now();
+      const cartItems = await this.cartService.getCartItems(telegramId);
+      const duration = Date.now() - startTime;
+      this.logger.log(`Fetched ${cartItems.length} cart items in ${duration}ms`);
+      if (!cartItems.length) {
+        this.bot.sendMessage(chatId, 'Savatchangiz bo‘sh.');
+        return;
       }
-    });
+      let message = 'Savatchangiz:\n';
+      let total = 0;
+      cartItems.forEach((item) => {
+        message += `${item.product.name} - ${item.quantity} dona, Narxi: ${item.product.price * item.quantity} so‘m\n`;
+        total += item.product.price * item.quantity;
+      });
+      message += `Jami: ${total} so‘m`;
+      this.bot.sendMessage(chatId, message, {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '✅ Buyurtma berish', callback_data: 'place_order' }],
+            [{ text: '🗑️ Savatchani tozalash', callback_data: 'clear_cart' }],
+          ],
+        },
+      });
+    } else if (text === '👤 Profilim') {
+      const startTime = Date.now();
+      const user = await this.userService.findByTelegramId(telegramId);
+      const duration = Date.now() - startTime;
+      this.logger.log(`Fetched user profile in ${duration}ms`);
+      this.bot.sendMessage(chatId, `Ism: ${user.fullName}\nTelefon: ${user.phone || 'Kiritilmagan'}\nBuyurtmalar soni: ${user.orders.length}`);
+    } else if (text === '🕘 Buyurtma tarixi') {
+      const startTime = Date.now();
+      const orders = await this.orderService.getUserOrders(telegramId);
+      const duration = Date.now() - startTime;
+      this.logger.log(`Fetched ${orders.length} orders in ${duration}ms`);
+      if (!orders.length) {
+        this.bot.sendMessage(chatId, 'Sizda hali buyurtmalar yo‘q.');
+        return;
+      }
+      let message = 'Buyurtma tarixingiz:\n';
+      orders.forEach((order) => {
+        message += `ID: ${order.id}, Jami: ${order.totalAmount} so‘m, Status: ${order.status}\n`;
+      });
+      this.bot.sendMessage(chatId, message);
+    } else if (text === 'ℹ️ Biz haqimizda') {
+      this.bot.sendMessage(chatId, 'ℹ️ Biz haqimizda\nBiz onlayn do‘konmiz, sifatli mahsulotlar va tezkor xizmat taklif qilamiz!\nAloqa: @YourShopSupport\nVeb-sayt: https://yourshop.uz');
+    } else if (text === '🆘 Yordam') {
+      this.bot.sendMessage(chatId, `🆘 Yordam\nSavollaringiz bo‘lsa, admin bilan bog‘laning: @${this.adminTelegramId}\nYoki xabar yozing:`, {
+        reply_markup: { force_reply: true },
+      });
+      this.bot.once('message', async (msg) => {
+        try {
+          await this.bot.sendMessage(this.adminTelegramId, `Yordam so‘rovi:\nFoydalanuvchi: ${msg.from.id}\nXabar: ${msg.text}`);
+          this.bot.sendMessage(chatId, 'Sizning xabaringiz adminga yuborildi. Tez orada javob olasiz!');
+        } catch (error) {
+          this.logger.error(`Error sending help request: ${error.message}`, error.stack);
+          this.bot.sendMessage(chatId, 'Xabar yuborishda xato yuz berdi.');
+        }
+      });
+    } else if (text.startsWith('/promocode')) {
+      const code = text.split(' ')[1];
+      if (!code) {
+        this.bot.sendMessage(chatId, 'Iltimos, promo-kodni kiriting. Masalan: /promocode ABC123');
+        return;
+      }
+      try {
+        const startTime = Date.now();
+        const promocode = await this.promocodeService.applyPromocode(code);
+        const duration = Date.now() - startTime;
+        this.logger.log(`Applied promocode ${code} in ${duration}ms`);
+        this.bot.sendMessage(chatId, `Promo-kod qo‘llanildi! ${promocode.discountPercent}% chegirma.`);
+      } catch (error) {
+        this.logger.error(`Error applying promocode: ${error.message}`, error.stack);
+        this.bot.sendMessage(chatId, 'Promo-kodni qo‘llashda xato yuz berdi.');
+      }
+    }
+  } catch (error) {
+    this.logger.error(`Error in message handler: ${error.message}`, error.stack);
+    this.bot.sendMessage(chatId, 'Xatolik yuz berdi, iltimos keyinroq urinib ko‘ring.');
+  }
+});
 
     this.bot.on('callback_query', async (query) => {
       const chatId = query.message.chat.id;
