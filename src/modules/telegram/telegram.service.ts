@@ -75,7 +75,6 @@ export class TelegramService {
       }
     });
 
-    // Telefon raqamini qabul qilish
     this.bot.on('contact', async (msg) => {
       const chatId = msg.chat.id;
       const telegramId = msg.from.id.toString();
@@ -83,7 +82,7 @@ export class TelegramService {
       try {
         this.logger.log(`Received phone number for telegramId: ${telegramId}`);
         const startTime = Date.now();
-        await this.userService.updatePhoneNumber(telegramId, phone);
+        const user = await this.userService.updatePhoneNumber(telegramId, phone);
         const duration = Date.now() - startTime;
         this.logger.log(`Updated phone number for telegramId: ${telegramId} in ${duration}ms`);
         this.bot.sendMessage(chatId, 'Telefon raqamingiz saqlandi! Endi do‘konimizdan bemalol foydalanishingiz mumkin.', {
@@ -97,18 +96,16 @@ export class TelegramService {
           },
         });
       } catch (error) {
-        this.logger.error(`Error saving phone number: ${error.message}`, error.stack);
+        this.logger.error(`Error saving phone number for telegramId: ${telegramId}: ${error.message}`, error.stack);
         this.bot.sendMessage(chatId, 'Telefon raqamini saqlashda xato yuz berdi. Iltimos, keyinroq urinib ko‘ring.');
       }
     });
 
-    // /about komandasi
     this.bot.onText(/\/about/, async (msg) => {
       const chatId = msg.chat.id;
       this.bot.sendMessage(chatId, 'ℹ️ Biz haqimizda\nBiz onlayn do‘konmiz, sifatli mahsulotlar va tezkor xizmat taklif qilamiz!\nAloqa: @YourShopSupport\nVeb-sayt: https://yourshop.uz');
     });
 
-    // /help komandasi
     this.bot.onText(/\/help/, async (msg) => {
       const chatId = msg.chat.id;
       this.bot.sendMessage(chatId, `🆘 Yordam\nSavollaringiz bo‘lsa, admin bilan bog‘laning: @${this.adminTelegramId}\nYoki xabar yozing:`, {
@@ -120,12 +117,11 @@ export class TelegramService {
           this.bot.sendMessage(chatId, 'Sizning xabaringiz adminga yuborildi. Tez orada javob olasiz!');
         } catch (error) {
           this.logger.error(`Error sending help request: ${error.message}`, error.stack);
-          this.bot.sendMessage(chatId, 'Xabar yuborishda xato yuz berdi. Iltimos, keyinroq urinib ko‘ring.');
+          this.bot.sendMessage(chatId, 'Xabar yuborishda xato yuz berdi.');
         }
       });
     });
 
-    // /admin komandasi (kengaytirilgan)
     this.bot.onText(/\/admin/, async (msg) => {
       const chatId = msg.chat.id;
       const telegramId = msg.from.id.toString();
@@ -143,10 +139,31 @@ export class TelegramService {
         this.bot.sendMessage(chatId, 'Admin paneli', {
           reply_markup: {
             inline_keyboard: [
-              [{ text: '➕ Kategoriya qo‘shish', callback_data: 'add_category' }, { text: '🗑️ Kategoriya o‘chirish', callback_data: 'delete_category' }],
-              [{ text: '➕ Mahsulot qo‘shish', callback_data: 'add_product' }, { text: '🗑️ Mahsulot o‘chirish', callback_data: 'delete_product' }],
-              [{ text: '📦 Buyurtmalar', callback_data: 'view_orders' }, { text: '✏️ Buyurtma tahrirlash', callback_data: 'edit_order' }],
-              [{ text: '🗒️ Feedbacklar', callback_data: 'view_feedback' }, { text: '🗑️ Feedback o‘chirish', callback_data: 'delete_feedback' }],
+              [
+                { text: '📋 Kategoriyalarni ko‘rish', callback_data: 'view_categories' },
+                { text: '➕ Kategoriya qo‘shish', callback_data: 'add_category' },
+                { text: '✏️ Kategoriya tahrirlash', callback_data: 'edit_category' },
+                { text: '🗑️ Kategoriya o‘chirish', callback_data: 'delete_category' },
+              ],
+              [
+                { text: '📋 Mahsulotlarni ko‘rish', callback_data: 'view_products' },
+                { text: '➕ Mahsulot qo‘shish', callback_data: 'add_product' },
+                { text: '✏️ Mahsulot tahrirlash', callback_data: 'edit_product' },
+                { text: '🗑️ Mahsulot o‘chirish', callback_data: 'delete_product' },
+              ],
+              [
+                { text: '👥 Foydalanuvchilarni ko‘rish', callback_data: 'view_users' },
+                { text: '✏️ Foydalanuvchi tahrirlash', callback_data: 'edit_user' },
+                { text: '🗑️ Foydalanuvchi o‘chirish', callback_data: 'delete_user' },
+              ],
+              [
+                { text: '📦 Buyurtmalar', callback_data: 'view_orders' },
+                { text: '✏️ Buyurtma tahrirlash', callback_data: 'edit_order' },
+              ],
+              [
+                { text: '🗒️ Feedbacklar', callback_data: 'view_feedback' },
+                { text: '🗑️ Feedback o‘chirish', callback_data: 'delete_feedback' },
+              ],
               [{ text: '🎟️ Promo-kod yaratish', callback_data: 'create_promocode' }],
               [{ text: '📊 Statistika', callback_data: 'view_stats' }],
             ],
@@ -158,7 +175,6 @@ export class TelegramService {
       }
     });
 
-    // Oddiy menyular
     this.bot.on('message', async (msg) => {
       const chatId = msg.chat.id;
       const telegramId = msg.from.id.toString();
@@ -256,7 +272,6 @@ export class TelegramService {
       }
     });
 
-    // Callback query handler
     this.bot.on('callback_query', async (query) => {
       const chatId = query.message.chat.id;
       const telegramId = query.from.id.toString();
@@ -394,6 +409,46 @@ export class TelegramService {
               }
             });
           });
+        } else if (data === 'view_categories') {
+          const startTime = Date.now();
+          const categories = await this.categoryService.findAll();
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${categories.length} categories in ${duration}ms`);
+          let message = 'Kategoriyalar:\n';
+          categories.forEach((cat) => {
+            message += `ID: ${cat.id}, Nomi: ${cat.name}, Tavsif: ${cat.description}\n`;
+          });
+          this.bot.sendMessage(chatId, message || 'Kategoriyalar mavjud emas.');
+        } else if (data === 'edit_category') {
+          const startTime = Date.now();
+          const categories = await this.categoryService.findAll();
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${categories.length} categories in ${duration}ms`);
+          const keyboard = categories.map((cat) => [
+            { text: `${cat.name}`, callback_data: `edit_cat_${cat.id}` },
+          ]);
+          this.bot.sendMessage(chatId, 'Tahrir qilinadigan kategoriyani tanlang:', {
+            reply_markup: { inline_keyboard: keyboard },
+          });
+        } else if (data.startsWith('edit_cat_')) {
+          const categoryId = parseInt(data.split('_')[2]);
+          this.bot.sendMessage(chatId, 'Yangi kategoriya nomini kiriting:', { reply_markup: { force_reply: true } });
+          this.bot.once('message', async (msgName) => {
+            const name = msgName.text;
+            this.bot.sendMessage(chatId, 'Yangi kategoriya tavsifini kiriting:', { reply_markup: { force_reply: true } });
+            this.bot.once('message', async (msgDesc) => {
+              try {
+                const startTime = Date.now();
+                await this.categoryService.update(categoryId, { name, description: msgDesc.text });
+                const duration = Date.now() - startTime;
+                this.logger.log(`Updated categoryId: ${categoryId} in ${duration}ms`);
+                this.bot.sendMessage(chatId, 'Kategoriya muvaffaqiyatli yangilandi!');
+              } catch (error) {
+                this.logger.error(`Error in edit_category: ${error.message}`, error.stack);
+                this.bot.sendMessage(chatId, 'Kategoriyani tahrirlashda xato yuz berdi.');
+              }
+            });
+          });
         } else if (data === 'delete_category') {
           const startTime = Date.now();
           const categories = await this.categoryService.findAll();
@@ -457,6 +512,63 @@ export class TelegramService {
               this.bot.sendMessage(chatId, 'Mahsulot qo‘shishda xato yuz berdi.');
             }
           });
+        }else if (data === 'view_products') {
+          const startTime = Date.now();
+          const products = await this.productService.findAll();
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${products.length} products in ${duration}ms`);
+          let message = 'Mahsulotlar:\n';
+          products.forEach((prod) => {
+            message += `ID: ${prod.id}, Nomi: ${prod.name}, Narxi: ${prod.price} so‘m, Kategoriya ID: ${prod.category.id}\n`;
+          });
+          this.bot.sendMessage(chatId, message || 'Mahsulotlar mavjud emas.');
+        } else if (data === 'edit_product') {
+          const startTime = Date.now();
+          const products = await this.productService.findAll();
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${products.length} products in ${duration}ms`);
+          const keyboard = products.map((prod) => [
+            { text: `${prod.name}`, callback_data: `edit_prod_${prod.id}` },
+          ]);
+          this.bot.sendMessage(chatId, 'Tahrir qilinadigan mahsulotni tanlang:', {
+            reply_markup: { inline_keyboard: keyboard },
+          });
+        } else if (data.startsWith('edit_prod_')) {
+          const productId = parseInt(data.split('_')[2]);
+          this.bot.sendMessage(
+            chatId,
+            'Yangi mahsulot ma‘lumotlarini kiriting (nomi;narxi;tasviri;rasm URL;kategoriya ID):',
+            { reply_markup: { force_reply: true } },
+          );
+          this.bot.once('message', async (msg) => {
+            try {
+              const [name, price, description, imageUrl, categoryId] = msg.text.split(';');
+              const parsedCategoryId = parseInt(categoryId.trim());
+              if (isNaN(parsedCategoryId)) {
+                this.bot.sendMessage(chatId, 'Kategoriya ID noto‘g‘ri.');
+                return;
+              }
+              const startTime = Date.now();
+              const category = await this.categoryService.findOne(parsedCategoryId);
+              if (!category) {
+                this.bot.sendMessage(chatId, `Kategoriya ID ${parsedCategoryId} topilmadi.`);
+                return;
+              }
+              await this.productService.update(productId, {
+                name: name.trim(),
+                price: parseFloat(price.trim()),
+                description: description.trim(),
+                imageUrl: imageUrl.trim(),
+                categoryId: parsedCategoryId,
+              });
+              const duration = Date.now() - startTime;
+              this.logger.log(`Updated productId: ${productId} in ${duration}ms`);
+              this.bot.sendMessage(chatId, 'Mahsulot muvaffaqiyatli yangilandi.');
+            } catch (error) {
+              this.logger.error(`Error in edit_product: ${error.message}`, error.stack);
+              this.bot.sendMessage(chatId, 'Mahsulotni tahrirlashda xato yuz berdi.');
+            }
+          });
         } else if (data === 'delete_product') {
           const startTime = Date.now();
           const products = await this.productService.findAll();
@@ -479,6 +591,68 @@ export class TelegramService {
           } catch (error) {
             this.logger.error(`Error deleting product: ${error.message}`, error.stack);
             this.bot.sendMessage(chatId, 'Mahsulotni o‘chirishda xato yuz berdi.');
+          }
+        } else if (data === 'view_users') {
+          const startTime = Date.now();
+          const users = await this.userService.findAll();
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${users.length} users in ${duration}ms`);
+          let message = 'Foydalanuvchilar:\n';
+          users.forEach((user) => {
+            message += `ID: ${user.id}, Telegram ID: ${user.telegramId}, Ism: ${user.fullName}, Telefon: ${user.phone || 'Kiritilmagan'}\n`;
+          });
+          this.bot.sendMessage(chatId, message || 'Foydalanuvchilar mavjud emas.');
+        } else if (data === 'edit_user') {
+          const startTime = Date.now();
+          const users = await this.userService.findAll();
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${users.length} users in ${duration}ms`);
+          const keyboard = users.map((user) => [
+            { text: `${user.fullName}`, callback_data: `edit_user_${user.id}` },
+          ]);
+          this.bot.sendMessage(chatId, 'Tahrir qilinadigan foydalanuvchini tanlang:', {
+            reply_markup: { inline_keyboard: keyboard },
+          });
+        } else if (data.startsWith('edit_user_')) {
+          const userId = parseInt(data.split('_')[2]);
+          this.bot.sendMessage(chatId, 'Yangi ism va telefon raqamini kiriting (ism;telefon):', {
+            reply_markup: { force_reply: true },
+          });
+          this.bot.once('message', async (msg) => {
+            try {
+              const [fullName, phone] = msg.text.split(';');
+              const startTime = Date.now();
+              await this.userService.update(userId, { fullName: fullName.trim(), phone: phone.trim() });
+              const duration = Date.now() - startTime;
+              this.logger.log(`Updated userId: ${userId} in ${duration}ms`);
+              this.bot.sendMessage(chatId, 'Foydalanuvchi ma‘lumotlari yangilandi.');
+            } catch (error) {
+              this.logger.error(`Error in edit_user: ${error.message}`, error.stack);
+              this.bot.sendMessage(chatId, 'Foydalanuvchini tahrirlashda xato yuz berdi.');
+            }
+          });
+        } else if (data === 'delete_user') {
+          const startTime = Date.now();
+          const users = await this.userService.findAll();
+          const duration = Date.now() - startTime;
+          this.logger.log(`Fetched ${users.length} users in ${duration}ms`);
+          const keyboard = users.map((user) => [
+            { text: `${user.fullName}`, callback_data: `delete_user_${user.id}` },
+          ]);
+          this.bot.sendMessage(chatId, 'O‘chiriladigan foydalanuvchini tanlang:', {
+            reply_markup: { inline_keyboard: keyboard },
+          });
+        } else if (data.startsWith('delete_user_')) {
+          const userId = parseInt(data.split('_')[2]);
+          try {
+            const startTime = Date.now();
+            await this.userService.remove(userId);
+            const duration = Date.now() - startTime;
+            this.logger.log(`Deleted userId: ${userId} in ${duration}ms`);
+            this.bot.sendMessage(chatId, 'Foydalanuvchi o‘chirildi.');
+          } catch (error) {
+            this.logger.error(`Error deleting user: ${error.message}`, error.stack);
+            this.bot.sendMessage(chatId, 'Foydalanuvchini o‘chirishda xato yuz berdi.');
           }
         } else if (data === 'edit_order') {
           const startTime = Date.now();
@@ -517,7 +691,7 @@ export class TelegramService {
           orders.forEach((order) => {
             message += `ID: ${order.id}, Jami: ${order.totalAmount} so‘m, Status: ${order.status}\n`;
           });
-          this.bot.sendMessage(chatId, message);
+          this.bot.sendMessage(chatId, message || 'Buyurtmalar mavjud emas.');
         } else if (data === 'view_feedback') {
           const startTime = Date.now();
           const feedbacks = await this.feedbackService.findAll();
@@ -527,7 +701,7 @@ export class TelegramService {
           feedbacks.forEach((fb) => {
             message += `Mahsulot ID: ${fb.product.id}, Reyting: ${fb.rating}, Izoh: ${fb.comment}\n`;
           });
-          this.bot.sendMessage(chatId, message);
+          this.bot.sendMessage(chatId, message || 'Feedbacklar mavjud emas.');
         } else if (data === 'delete_feedback') {
           const startTime = Date.now();
           const feedbacks = await this.feedbackService.findAll();
