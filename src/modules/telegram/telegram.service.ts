@@ -8,13 +8,22 @@ export class TelegramService {
   private logger = new Logger(TelegramService.name);
 
   constructor(private configService: ConfigService) {
-    this.bot = new TelegramBot("7942071036:AAFz_o_p2p2o-Gq-1C1YZMQSdODCHJiu2dY", { polling: false });
+    const token = '7942071036:AAFz_o_p2p2o-Gq-1C1YZMQSdODCHJiu2dY';
+    if (!token) {
+      this.logger.error('TELEGRAM_BOT_TOKEN is not defined in .env file');
+      throw new Error('TELEGRAM_BOT_TOKEN is not defined');
+    }
+    this.bot = new TelegramBot(token, { polling: false });
     this.setupWebhook();
   }
 
   private async setupWebhook() {
     try {
-      const webhookUrl = 'https://telegram-shop-bot-production.up.railway.app/telegram/webhook';
+      const webhookUrl = 'https://telegram-shop-bot-production.up.railway.app/telegram/webhook'
+      if (!webhookUrl) {
+        this.logger.error('WEBHOOK_URL is not defined in .env file');
+        throw new Error('WEBHOOK_URL is not defined');
+      }
       this.logger.log(`Setting webhook to ${webhookUrl}`);
       const startTime = Date.now();
       await this.bot.setWebHook(webhookUrl);
@@ -60,7 +69,7 @@ export class TelegramService {
     }
   }
 
-  async sendChatAction(chatId: any, action: TelegramBot.ChatAction) {
+  async sendChatAction(chatId: string | number, action: TelegramBot.ChatAction) {
     try {
       await this.bot.sendChatAction(chatId, action);
     } catch (error) {
