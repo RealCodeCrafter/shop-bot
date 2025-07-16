@@ -1,7 +1,6 @@
 import { Controller, Post, Body, Logger, Req } from '@nestjs/common';
 import { TelegramService } from './telegram.service';
 import { ApiTags } from '@nestjs/swagger';
-import * as TelegramBot from 'node-telegram-bot-api';
 import { Request } from 'express';
 
 @ApiTags('telegram')
@@ -12,7 +11,7 @@ export class TelegramController {
   constructor(private readonly telegramService: TelegramService) {}
 
   @Post('webhook')
-  async handleWebhook(@Body() update: TelegramBot.Update, @Req() request: Request) {
+  async handleWebhook(@Body() update: any, @Req() request: Request) {
     const startTime = Date.now();
     this.logger.log(`Received webhook update: ${JSON.stringify(update, null, 2)}`);
     this.logger.log(`Request headers: ${JSON.stringify(request.headers, null, 2)}`);

@@ -373,7 +373,7 @@ export class TelegramService {
   }
 
   
-  async handleWebhookUpdate(update: TelegramBot.Update) {
+ async handleWebhookUpdate(update: any) {
     try {
       this.logger.log(`Processing webhook update: ${JSON.stringify(update, null, 2)}`);
       const startTime = Date.now();
