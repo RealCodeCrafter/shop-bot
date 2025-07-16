@@ -12,27 +12,27 @@ export class ProductService {
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
     @InjectRepository(Category)
-  private categoryRepository: Repository<Category>,
+    private categoryRepository: Repository<Category>,
   ) {}
 
   async create(dto: CreateProductDto): Promise<Product> {
-  const category = await this.categoryRepository.findOne({ where: { id: dto.categoryId } });
-  if (!category) {
-    throw new NotFoundException(`Category ID ${dto.categoryId} topilmadi`);
+    const category = await this.categoryRepository.findOne({ where: { id: dto.categoryId } });
+    if (!category) {
+      throw new NotFoundException(`Category ID ${dto.categoryId} topilmadi`);
+    }
+
+    const product = this.productRepository.create({
+      ...dto,
+      category,
+      createdAt: new Date(),
+    });
+
+    return this.productRepository.save(product);
   }
 
-  const product = this.productRepository.create({
-    ...dto,
-    category,
-    createdAt: new Date(),
-  });
-
-  return this.productRepository.save(product);
-}
-
-async findAll(): Promise<Product[]> {
+  async findAll(): Promise<Product[]> {
     try {
-      return await this.productRepository.find();
+      return await this.productRepository.find({ relations: ['category'] });
     } catch (error) {
       throw new Error('Mahsulotlarni olishda xato yuz berdi');
     }
