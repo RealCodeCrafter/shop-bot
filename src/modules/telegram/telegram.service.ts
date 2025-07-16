@@ -13,7 +13,8 @@ import { PaymentService } from '../payment/payment.service';
 export class TelegramService {
   private bot: TelegramBot;
   private logger = new Logger(TelegramService.name);
-  private readonly adminTelegramId = 'Vali_003';
+  private readonly adminTelegramId = '5661241603';
+  private readonly adminTelegramUser = 'Vali_003';
 
   constructor(
     private userService: UserService,
@@ -112,7 +113,7 @@ export class TelegramService {
 
     this.bot.onText(/\/help/, async (msg) => {
       const chatId = msg.chat.id;
-      this.bot.sendMessage(chatId, `🆘 Yordam\nSavollaringiz bo‘lsa, admin bilan bog‘laning: @${this.adminTelegramId}\nYoki xabar yozing:`, {
+      this.bot.sendMessage(chatId, `🆘 Yordam\nSavollaringiz bo‘lsa, admin bilan bog‘laning: @${this.adminTelegramUser}\nYoki xabar yozing:`, {
         reply_markup: { force_reply: true },
       });
       this.bot.once('message', async (msg) => {
