@@ -30,8 +30,12 @@ export class ProductService {
   return this.productRepository.save(product);
 }
 
-  async findAll(): Promise<Product[]> {
-    return this.productRepository.find({ relations: ['category'] });
+async findAll(): Promise<Product[]> {
+    try {
+      return await this.productRepository.find();
+    } catch (error) {
+      throw new Error('Mahsulotlarni olishda xato yuz berdi');
+    }
   }
 
   async findOne(id: number): Promise<Product> {
