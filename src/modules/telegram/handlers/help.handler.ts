@@ -14,8 +14,8 @@ export class HelpHandler {
 
   handle() {
     const bot = this.telegramService.getBotInstance();
-    const adminTelegramId = this.configService.get<number>('ADMIN_TELEGRAM_ID');
-    const adminTelegramUser = this.configService.get<string>('ADMIN_TELEGRAM_USER');
+    const adminTelegramId = "5661241603"
+    const adminTelegramUser = "Vali_003"
 
     bot.onText(/🆘 Yordam/, async (msg) => {
       const chatId = msg.chat.id;

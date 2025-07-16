@@ -8,7 +8,7 @@ export class TelegramService {
   private logger = new Logger(TelegramService.name);
 
   constructor(private configService: ConfigService) {
-    this.bot = new TelegramBot(this.configService.get<string>('TELEGRAM_BOT_TOKEN'), { polling: false });
+    this.bot = new TelegramBot("7942071036:AAFz_o_p2p2o-Gq-1C1YZMQSdODCHJiu2dY", { polling: false });
     this.setupWebhook();
   }
 
