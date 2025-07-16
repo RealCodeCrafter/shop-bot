@@ -96,11 +96,11 @@ export class TelegramService {
       },
     });
   } catch (error) {
-    this.logger.error(`Error saving phone number for telegramId: ${telegramId}: ${error.message}`, error.stack);
+    this.logger.error(`Error saving phone number for telegramId: ${telegramId}, phone: ${phone}, error: ${error.message}`, error.stack);
     if (error instanceof NotFoundException) {
       await this.bot.sendMessage(chatId, 'Foydalanuvchi topilmadi. Iltimos, /start buyrug‘i bilan qayta urinib ko‘ring.');
     } else {
-      await this.bot.sendMessage(chatId, 'Telefon raqamini saqlashda xato yuz berdi. Iltimos, keyinroq urinib ko‘ring.');
+      await this.bot.sendMessage(chatId, `Telefon raqamini saqlashda xato yuz berdi: ${error.message}. Iltimos, keyinroq urinib ko‘ring.`);
     }
   }
 });

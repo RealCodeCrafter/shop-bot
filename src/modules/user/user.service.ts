@@ -71,18 +71,18 @@ export class UserService {
   }
 
   async updatePhoneNumber(telegramId: string, phone: string): Promise<User> {
-    try {
-      const user = await this.userRepository.findOne({ where: { telegramId } });
-      if (!user) {
-        throw new NotFoundException('Foydalanuvchi topilmadi');
-      }
-      user.phone = phone;
-      await this.userRepository.save(user);
-      return user;
-    } catch (error) {
-      throw new Error('Telefon raqamini yangilashda xato yuz berdi');
+  try {
+    const user = await this.userRepository.findOne({ where: { telegramId } });
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
     }
+    user.phone = phone;
+    await this.userRepository.save(user);
+    return user;
+  } catch (error) {
+    throw new Error('Telefon raqamini yangilashda xato yuz berdi');
   }
+}
 
   async remove(id: number): Promise<void> {
     try {
