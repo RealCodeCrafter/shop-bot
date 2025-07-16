@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, forwardRef, Inject } from '@nestjs/common';
 import * as TelegramBot from 'node-telegram-bot-api';
 import { StartHandler } from './handlers/start.handler';
 import { ContactHandler } from './handlers/contact.handler';
@@ -15,12 +15,19 @@ export class TelegramService {
   private logger = new Logger(TelegramService.name);
 
   constructor(
+    @Inject(forwardRef(() => StartHandler))
     private startHandler: StartHandler,
+    @Inject(forwardRef(() => ContactHandler))
     private contactHandler: ContactHandler,
+    @Inject(forwardRef(() => CategoriesHandler))
     private categoriesHandler: CategoriesHandler,
+    @Inject(forwardRef(() => CartHandler))
     private cartHandler: CartHandler,
+    @Inject(forwardRef(() => HelpHandler))
     private helpHandler: HelpHandler,
+    @Inject(forwardRef(() => AdminHandler))
     private adminHandler: AdminHandler,
+    @Inject(forwardRef(() => CallbackHandler))
     private callbackHandler: CallbackHandler,
   ) {
     this.bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: false });
