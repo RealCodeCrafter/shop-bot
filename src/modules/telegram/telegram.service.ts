@@ -13,7 +13,7 @@ import { PaymentService } from '../payment/payment.service';
 export class TelegramService {
   private bot: TelegramBot;
   private logger = new Logger(TelegramService.name);
-  private readonly adminTelegramId = '5661241603';
+  private readonly adminTelegramId = 'Vali_003';
 
   constructor(
     private userService: UserService,
@@ -185,7 +185,7 @@ export class TelegramService {
   const text = msg.text;
   if (!text) {
     this.logger.log(`Ignoring message without text from telegramId: ${telegramId}`);
-    return; // Agar text bo‘lmasa, hech narsa qilmaymiz
+    return; 
   }
   try {
     this.logger.log(`Processing message: ${text} from telegramId: ${telegramId}`);
