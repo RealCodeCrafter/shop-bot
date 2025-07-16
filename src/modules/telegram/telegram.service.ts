@@ -128,12 +128,14 @@ export class TelegramService {
         return;
       }
       try {
+        // Admin'ga xabar yuborishdan oldin bot bilan chat boshlanganligini tekshirish
+        await this.bot.sendChatAction(this.adminTelegramId, 'typing');
         await this.bot.sendMessage(this.adminTelegramId, `Yordam so‘rovi:\nFoydalanuvchi: ${replyMsg.from.id} (@${replyMsg.from.username || 'N/A'})\nXabar: ${replyText}`);
-        await this.bot.sendMessage(chatId, 'Sizning xabaringiz adminga (@${this.adminTelegramUser}) yuborildi. Tez orada javob olasiz!');
+        await this.bot.sendMessage(chatId, `Sizning xabaringiz adminga (@${this.adminTelegramUser}) yuborildi. Tez orada javob olasiz!`);
       } catch (error) {
         this.logger.error(`Error sending help request to adminTelegramId: ${this.adminTelegramId}, message: ${replyText}, error: ${error.message}`, error.stack);
         if (error.response?.body?.error_code === 403) {
-          await this.bot.sendMessage(chatId, `Xabar yuborishda xato: Admin (@${this.adminTelegramUser}) bot bilan chat boshlamagan. Iltimos, @${this.adminTelegramUser} ga yozing va botni ishga tushiring (/start).`);
+          await this.bot.sendMessage(chatId, `Xabar yuborishda xato: Admin (@${this.adminTelegramUser}) bot bilan chat boshlamagan. Iltimos, @${this.adminTelegramUser} ga to‘g‘ridan-to‘g‘ri yozing yoki admin botga /start yuborsin.`);
         } else {
           await this.bot.sendMessage(chatId, `Xabar yuborishda xato yuz berdi: ${error.message}. Iltimos, @${this.adminTelegramUser} ga to‘g‘ridan-to‘g‘ri yozing.`);
         }
