@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as TelegramBot from 'node-telegram-bot-api';
 import { UserService } from '../user/user.service';
 import { CategoryService } from '../category/category.service';
@@ -57,7 +57,7 @@ export class TelegramService {
         await this.userService.registerUser({ telegramId, fullName });
         const duration = Date.now() - startTime;
         this.logger.log(`User registered successfully for telegramId: ${telegramId} in ${duration}ms`);
-        this.bot.sendMessage(chatId, `Xush kelibsiz, ${fullName}! 🛒 Do‘konimizga xush kelibsiz! Iltimos, telefon raqamingizni yuboring:`, {
+        this.bot.sendMessage(chatId, `Xush kelibsiz, ${fullName}! 🛒 Do‘konimizda sizni ko'rganimizdan xursandmiz! Iltimos, telefon raqamingizni yuboring:`, {
           reply_markup: {
             keyboard: [
               [{ text: '📞 Telefon raqamni yuborish', request_contact: true }],
@@ -76,30 +76,34 @@ export class TelegramService {
     });
 
     this.bot.on('contact', async (msg) => {
-      const chatId = msg.chat.id;
-      const telegramId = msg.from.id.toString();
-      const phone = msg.contact.phone_number;
-      try {
-        this.logger.log(`Received phone number for telegramId: ${telegramId}`);
-        const startTime = Date.now();
-        const user = await this.userService.updatePhoneNumber(telegramId, phone);
-        const duration = Date.now() - startTime;
-        this.logger.log(`Updated phone number for telegramId: ${telegramId} in ${duration}ms`);
-        this.bot.sendMessage(chatId, 'Telefon raqamingiz saqlandi! Endi do‘konimizdan bemalol foydalanishingiz mumkin.', {
-          reply_markup: {
-            keyboard: [
-              [{ text: '📁 Kategoriyalar' }, { text: '🛒 Savatcha' }],
-              [{ text: '👤 Profilim' }, { text: '🕘 Buyurtma tarixi' }],
-              [{ text: 'ℹ️ Biz haqimizda' }, { text: '🆘 Yordam' }],
-            ],
-            resize_keyboard: true,
-          },
-        });
-      } catch (error) {
-        this.logger.error(`Error saving phone number for telegramId: ${telegramId}: ${error.message}`, error.stack);
-        this.bot.sendMessage(chatId, 'Telefon raqamini saqlashda xato yuz berdi. Iltimos, keyinroq urinib ko‘ring.');
-      }
+  const chatId = msg.chat.id;
+  const telegramId = msg.from.id.toString();
+  const phone = msg.contact.phone_number;
+  this.logger.log(`Received phone number for telegramId: ${telegramId}, phone: ${phone}`);
+  const startTime = Date.now();
+  try {
+    const user = await this.userService.updatePhoneNumber(telegramId, phone);
+    const duration = Date.now() - startTime;
+    this.logger.log(`Updated phone number for telegramId: ${telegramId} in ${duration}ms`);
+    await this.bot.sendMessage(chatId, 'Telefon raqamingiz saqlandi! Endi do‘konimizdan bemalol foydalanishingiz mumkin.', {
+      reply_markup: {
+        keyboard: [
+          [{ text: '📁 Kategoriyalar' }, { text: '🛒 Savatcha' }],
+          [{ text: '👤 Profilim' }, { text: '🕘 Buyurtma tarixi' }],
+          [{ text: 'ℹ️ Biz haqimizda' }, { text: '🆘 Yordam' }],
+        ],
+        resize_keyboard: true,
+      },
     });
+  } catch (error) {
+    this.logger.error(`Error saving phone number for telegramId: ${telegramId}: ${error.message}`, error.stack);
+    if (error instanceof NotFoundException) {
+      await this.bot.sendMessage(chatId, 'Foydalanuvchi topilmadi. Iltimos, /start buyrug‘i bilan qayta urinib ko‘ring.');
+    } else {
+      await this.bot.sendMessage(chatId, 'Telefon raqamini saqlashda xato yuz berdi. Iltimos, keyinroq urinib ko‘ring.');
+    }
+  }
+});
 
     this.bot.onText(/\/about/, async (msg) => {
       const chatId = msg.chat.id;
@@ -512,14 +516,14 @@ export class TelegramService {
               this.bot.sendMessage(chatId, 'Mahsulot qo‘shishda xato yuz berdi.');
             }
           });
-        }else if (data === 'view_products') {
+        } else if (data === 'view_products') {
           const startTime = Date.now();
           const products = await this.productService.findAll();
           const duration = Date.now() - startTime;
           this.logger.log(`Fetched ${products.length} products in ${duration}ms`);
           let message = 'Mahsulotlar:\n';
           products.forEach((prod) => {
-            message += `ID: ${prod.id}, Nomi: ${prod.name}, Narxi: ${prod.price} so‘m, Kategoriya ID: ${prod.category.id}\n`;
+            message += `ID: ${prod.id}, Nomi: ${prod.name}, Narxi: ${prod.price} so‘m, Kategoriya ID: ${prod.category?.id || 'N/A'}\n`;
           });
           this.bot.sendMessage(chatId, message || 'Mahsulotlar mavjud emas.');
         } else if (data === 'edit_product') {
