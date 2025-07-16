@@ -14,7 +14,7 @@ export class TelegramService {
 
   private async setupWebhook() {
     try {
-      const webhookUrl = this.configService.get<string>('WEBHOOK_URL');
+      const webhookUrl = 'https://telegram-shop-bot-production.up.railway.app/telegram/webhook';
       this.logger.log(`Setting webhook to ${webhookUrl}`);
       const startTime = Date.now();
       await this.bot.setWebHook(webhookUrl);
