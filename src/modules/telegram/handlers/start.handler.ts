@@ -15,6 +15,7 @@ export class StartHandler {
 
   handle() {
     const bot = this.telegramService.getBotInstance();
+
     bot.onText(/\/start/, async (msg) => {
       const chatId = msg.chat.id;
       const telegramId = msg.from.id.toString();
@@ -26,7 +27,6 @@ export class StartHandler {
       try {
         await this.userService.registerUser({ telegramId, fullName });
         const user = await this.userService.findByTelegramId(telegramId);
-
         const duration = Date.now() - startTime;
 
         if (!user.phone) {
@@ -46,30 +46,10 @@ export class StartHandler {
         }
       } catch (error) {
         this.logger.error(`Error in /start: ${error.message}`);
-        await this.telegramService.sendMessage(chatId, 'Xatolik yuz berdi, iltimos keyinroq urinib ko‘ring.');
-      }
-    });
-
-    bot.on('message', async (msg) => {
-      const chatId = msg.chat.id;
-      const telegramId = msg.from.id.toString();
-
-      if (msg.contact && msg.contact.phone_number) {
-        const phone = msg.contact.phone_number;
-        try {
-          await this.userService.updatePhoneNumber(telegramId, phone);
-          await this.telegramService.sendMessage(
-            chatId,
-            `Rahmat! Telefon raqamingiz saqlandi. Endi do‘konimizdan bemalol foydalanishingiz mumkin.`,
-            { reply_markup: getMainKeyboard(false) },
-          );
-        } catch (error) {
-          this.logger.error(`Telefon saqlashda xatolik: ${error.message}`);
-          await this.telegramService.sendMessage(
-            chatId,
-            'Telefon raqamingizni saqlashda xatolik yuz berdi, iltimos qayta yuboring.',
-          );
-        }
+        await this.telegramService.sendMessage(
+          chatId,
+          'Xatolik yuz berdi, iltimos keyinroq urinib ko‘ring.',
+        );
       }
     });
   }
