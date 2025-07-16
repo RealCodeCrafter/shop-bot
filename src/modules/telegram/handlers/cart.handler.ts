@@ -1,14 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as TelegramBot from 'node-telegram-bot-api';
 import { CartService } from '../../cart/cart.service';
+import { TelegramService } from '../telegram.service';
 
 @Injectable()
 export class CartHandler {
   private logger = new Logger(CartHandler.name);
 
-  constructor(private cartService: CartService) {}
+  constructor(
+    private cartService: CartService,
+    private telegramService: TelegramService,
+  ) {}
 
-  handle(bot: TelegramBot) {
+  handle() {
+    const bot = this.telegramService.getBotInstance();
     bot.onText(/🛒 Savatcha/, async (msg) => {
       const chatId = msg.chat.id;
       const telegramId = msg.from.id.toString();
@@ -19,7 +24,7 @@ export class CartHandler {
         const duration = Date.now() - startTime;
         this.logger.log(`Fetched ${cartItems.length} cart items in ${duration}ms`);
         if (!cartItems.length) {
-          await bot.sendMessage(chatId, 'Savatchangiz bo‘sh.');
+          await this.telegramService.sendMessage(chatId, 'Savatchangiz bo‘sh.');
           return;
         }
         let message = 'Savatchangiz:\n';
@@ -29,7 +34,7 @@ export class CartHandler {
           total += item.product.price * item.quantity;
         });
         message += `Jami: ${total} so‘m`;
-        await bot.sendMessage(chatId, message, {
+        await this.telegramService.sendMessage(chatId, message, {
           reply_markup: {
             inline_keyboard: [
               [{ text: '✅ Buyurtma berish', callback_data: 'place_order' }],
@@ -39,7 +44,7 @@ export class CartHandler {
         });
       } catch (error) {
         this.logger.error(`Error in cart: ${error.message}`);
-        await bot.sendMessage(chatId, 'Savatchani olishda xato yuz berdi.');
+        await this.telegramService.sendMessage(chatId, 'Savatchani olishda xato yuz berdi.');
       }
     });
   }

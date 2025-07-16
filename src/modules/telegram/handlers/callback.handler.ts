@@ -27,7 +27,8 @@ export class CallbackHandler {
     private telegramService: TelegramService,
   ) {}
 
-  handle(bot: TelegramBot) {
+  handle() {
+    const bot = this.telegramService.getBotInstance();
     bot.on('callback_query', async (query) => {
       const chatId = query.message.chat.id;
       const telegramId = query.from.id.toString();

@@ -1,14 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as TelegramBot from 'node-telegram-bot-api';
 import { CategoryService } from '../../category/category.service';
+import { TelegramService } from '../telegram.service';
 
 @Injectable()
 export class CategoriesHandler {
   private logger = new Logger(CategoriesHandler.name);
 
-  constructor(private categoryService: CategoryService) {}
+  constructor(
+    private categoryService: CategoryService,
+    private telegramService: TelegramService,
+  ) {}
 
-  handle(bot: TelegramBot) {
+  handle() {
+    const bot = this.telegramService.getBotInstance();
     bot.onText(/📁 Kategoriyalar/, async (msg) => {
       const chatId = msg.chat.id;
       const telegramId = msg.from.id.toString();
@@ -19,12 +24,12 @@ export class CategoriesHandler {
         const duration = Date.now() - startTime;
         this.logger.log(`Fetched ${categories.length} categories in ${duration}ms`);
         const keyboard = categories.map((cat) => [{ text: cat.name, callback_data: `category_${cat.id}` }]);
-        await bot.sendMessage(chatId, 'Kategoriyalarni tanlang:', {
+        await this.telegramService.sendMessage(chatId, 'Kategoriyalarni tanlang:', {
           reply_markup: { inline_keyboard: keyboard },
         });
       } catch (error) {
         this.logger.error(`Error in categories: ${error.message}`);
-        await bot.sendMessage(chatId, 'Kategoriyalarni olishda xato yuz berdi.');
+        await this.telegramService.sendMessage(chatId, 'Kategoriyalarni olishda xato yuz berdi.');
       }
     });
   }

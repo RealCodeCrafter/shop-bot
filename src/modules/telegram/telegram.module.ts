@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { TelegramService } from './telegram.service';
+import { TelegramController } from './telegram.controller';
 import { UserModule } from '../user/user.module';
 import { CategoryModule } from '../category/category.module';
 import { ProductModule } from '../product/product.module';
@@ -16,7 +17,6 @@ import { HelpHandler } from './handlers/help.handler';
 import { AdminHandler } from './handlers/admin.handler';
 import { CallbackHandler } from './handlers/callback.handler';
 import { ConfigModule } from '@nestjs/config';
-import { TelegramController } from './telegram.controller';
 
 @Module({
   imports: [
@@ -30,6 +30,7 @@ import { TelegramController } from './telegram.controller';
     PromocodeModule,
     PaymentModule,
   ],
+  controllers: [TelegramController],
   providers: [
     TelegramService,
     StartHandler,
@@ -40,7 +41,27 @@ import { TelegramController } from './telegram.controller';
     AdminHandler,
     CallbackHandler,
   ],
-  controllers: [TelegramController],
   exports: [TelegramService],
 })
-export class TelegramModule {}
+export class TelegramModule implements OnModuleInit {
+  constructor(
+    private telegramService: TelegramService,
+    private startHandler: StartHandler,
+    private contactHandler: ContactHandler,
+    private categoriesHandler: CategoriesHandler,
+    private cartHandler: CartHandler,
+    private helpHandler: HelpHandler,
+    private adminHandler: AdminHandler,
+    private callbackHandler: CallbackHandler,
+  ) {}
+
+  onModuleInit() {
+    this.startHandler.handle();
+    this.contactHandler.handle();
+    this.categoriesHandler.handle();
+    this.cartHandler.handle();
+    this.helpHandler.handle();
+    this.adminHandler.handle();
+    this.callbackHandler.handle();
+  }
+}
