@@ -47,18 +47,21 @@ export class TelegramService {
     }
   }
 
-  private setupCommands() {
-    this.bot.onText(/\/start/, async (msg) => {
-      const chatId = msg.chat.id;
-      const telegramId = msg.from.id.toString();
-      const fullName = `${msg.from.first_name} ${msg.from.last_name || ''}`.trim();
-      try {
-        this.logger.log(`Processing /start for telegramId: ${telegramId}, fullName: ${fullName}`);
-        const startTime = Date.now();
-        await this.userService.registerUser({ telegramId, fullName });
+    private setupCommands() {
+      this.bot.onText(/\/start/, async (msg) => {
+    const chatId = msg.chat.id;
+    const telegramId = msg.from.id.toString();
+    const fullName = `${msg.from.first_name} ${msg.from.last_name || ''}`.trim();
+    try {
+      this.logger.log(`Processing /start for telegramId: ${telegramId}, fullName: ${fullName}`);
+      const startTime = Date.now();
+      let user = await this.userService.findByTelegramId(telegramId);
+      
+      if (!user) {
+        user = await this.userService.registerUser({ telegramId, fullName });
         const duration = Date.now() - startTime;
         this.logger.log(`User registered successfully for telegramId: ${telegramId} in ${duration}ms`);
-        this.bot.sendMessage(chatId, `Xush kelibsiz, ${fullName}! 🛒 Do‘konimizda sizni ko'rganimizdan xursandmiz! Iltimos, telefon raqamingizni yuboring:`, {
+        await this.bot.sendMessage(chatId, `Xush kelibsiz, ${fullName}! 🛒 Do‘konimizda sizni ko'rganimizdan xursandmiz! Iltimos, telefon raqamingizni yuboring:`, {
           reply_markup: {
             keyboard: [
               [{ text: '📞 Telefon raqamni yuborish', request_contact: true }],
@@ -70,11 +73,43 @@ export class TelegramService {
             one_time_keyboard: true,
           },
         });
-      } catch (error) {
-        this.logger.error(`Error in /start: ${error.message}`, error.stack);
-        this.bot.sendMessage(chatId, 'Xatolik yuz berdi, iltimos keyinroq urinib ko‘ring.');
+      } else if (!user.phone) {
+        // Foydalanuvchi mavjud, lekin telefon raqami yo‘q
+        const duration = Date.now() - startTime;
+        this.logger.log(`Existing user without phone number for telegramId: ${telegramId} in ${duration}ms`);
+        await this.bot.sendMessage(chatId, `Xush kelibsiz, ${fullName}! Iltimos, telefon raqamingizni yuboring:`, {
+          reply_markup: {
+            keyboard: [
+              [{ text: '📞 Telefon raqamni yuborish', request_contact: true }],
+              [{ text: '📁 Kategoriyalar' }, { text: '🛒 Savatcha' }],
+              [{ text: '👤 Profilim' }, { text: '🕘 Buyurtma tarixi' }],
+              [{ text: 'ℹ️ Biz haqimizda' }, { text: '🆘 Yordam' }],
+            ],
+            resize_keyboard: true,
+            one_time_keyboard: true,
+          },
+        });
+      } else {
+        // Foydalanuvchi mavjud va telefon raqami saqlangan
+        const duration = Date.now() - startTime;
+        this.logger.log(`Existing user with phone number for telegramId: ${telegramId} in ${duration}ms`);
+        await this.bot.sendMessage(chatId, `Qaytganingizdan xursandmiz, ${fullName}! 🛒 Do‘konimizdan bemalol foydalaning!`, {
+          reply_markup: {
+            keyboard: [
+              [{ text: '📁 Kategoriyalar' }, { text: '🛒 Savatcha' }],
+              [{ text: '👤 Profilim' }, { text: '🕘 Buyurtma tarixi' }],
+              [{ text: 'ℹ️ Biz haqimizda' }, { text: '🆘 Yordam' }],
+            ],
+            resize_keyboard: true,
+          },
+        });
       }
-    });
+    } catch (error) {
+      this.logger.error(`Error in /start: ${error.message}`, error.stack);
+      await this.bot.sendMessage(chatId, 'Xatolik yuz berdi, iltimos keyinroq urinib ko‘ring.');
+    }
+  });
+
 
     this.bot.on('contact', async (msg) => {
   const chatId = msg.chat.id;
