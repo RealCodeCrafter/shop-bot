@@ -21,5 +21,6 @@ export class CreateProductDto {
   isActive: boolean;
 
   @IsNumber()
+  @IsNotEmpty()
   categoryId: number;
 }
