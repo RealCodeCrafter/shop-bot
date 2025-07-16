@@ -16,6 +16,7 @@ import { HelpHandler } from './handlers/help.handler';
 import { AdminHandler } from './handlers/admin.handler';
 import { CallbackHandler } from './handlers/callback.handler';
 import { ConfigModule } from '@nestjs/config';
+import { TelegramController } from './telegram.controller';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { ConfigModule } from '@nestjs/config';
     AdminHandler,
     CallbackHandler,
   ],
+  controllers: [TelegramController],
   exports: [TelegramService],
 })
 export class TelegramModule {}
