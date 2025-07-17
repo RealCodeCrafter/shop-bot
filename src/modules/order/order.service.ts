@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from './order.entity';
@@ -13,6 +13,8 @@ import { TelegramService } from '../telegram/telegram.service';
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
@@ -26,11 +28,18 @@ export class OrderService {
   ) {}
 
   async createOrder(telegramId: string): Promise<Order> {
+    this.logger.log(`Creating order for telegramId: ${telegramId}`);
     const user = await this.userService.findByTelegramId(telegramId);
-    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
+    if (!user) {
+      this.logger.error(`User not found for telegramId: ${telegramId}`);
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
 
     const cartItems = await this.cartService.getCartItems(telegramId);
-    if (!cartItems.length) throw new Error('Savatcha bo‘sh');
+    if (!cartItems.length) {
+      this.logger.error('Cart is empty');
+      throw new Error('Savatcha bo‘sh');
+    }
 
     const order = this.orderRepository.create({
       user,
@@ -46,8 +55,14 @@ export class OrderService {
     const orderItems = await Promise.all(
       cartItems.map(async (item) => {
         const product = await this.productService.findOne(item.product.id);
-        if (!product) throw new NotFoundException(`Mahsulot ID ${item.product.id} topilmadi`);
-        if (product.stock < item.quantity) throw new Error(`Mahsulot ${product.name} yetarli emas`);
+        if (!product) {
+          this.logger.error(`Product ID ${item.product.id} not found`);
+          throw new NotFoundException(`Mahsulot ID ${item.product.id} topilmadi`);
+        }
+        if (product.stock < item.quantity) {
+          this.logger.error(`Insufficient stock for product ${product.name}`);
+          throw new Error(`Mahsulot ${product.name} yetarli emas`);
+        }
         totalAmount += item.product.price * item.quantity;
         product.stock -= item.quantity;
         await this.productService.update(item.product.id, { stock: product.stock });
@@ -75,30 +90,44 @@ export class OrderService {
 
   async notifyAdminOrderCreated(order: Order, user: any) {
     const adminChatId = '5661241603'; // Replace with actual admin chat ID
-    const message = `Yangi buyurtma!\nID: ${order.id}\nFoydalanuvchi: ${user.fullName}\nJami: ${order.totalAmount} so‘m\nStatus: ${order.status}`;
+    const items = order.orderItems?.map((item) => `${item.product.name} - ${item.quantity} dona`).join(', ');
+    const message = `Yangi buyurtma!\nID: ${order.id}\nFoydalanuvchi: ${user.fullName || 'Noma’lum'}\nMahsulotlar: ${items || 'N/A'}\nJami: ${order.totalAmount} so‘m\nStatus: ${order.status}`;
     await this.telegramService.sendMessage(adminChatId, message);
   }
 
   async findAll(): Promise<Order[]> {
-    return this.orderRepository.find({ relations: ['user', 'orderItems', 'orderItems.product', 'deliveries'] });
+    this.logger.log('Fetching all orders');
+    const orders = await this.orderRepository.find({ relations: ['user', 'orderItems', 'orderItems.product', 'deliveries'] });
+    this.logger.log(`Found ${orders.length} orders`);
+    return orders;
   }
 
   async findOne(id: number): Promise<Order> {
+    this.logger.log(`Fetching order with ID: ${id}`);
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['user', 'orderItems', 'orderItems.product', 'deliveries'],
     });
-    if (!order) throw new NotFoundException(`ID ${id} bo'yicha buyurtma topilmadi`);
+    if (!order) {
+      this.logger.error(`Order ID ${id} not found`);
+      throw new NotFoundException(`ID ${id} bo'yicha buyurtma topilmadi`);
+    }
     return order;
   }
 
   async getUserOrders(telegramId: string): Promise<Order[]> {
+    this.logger.log(`Fetching orders for telegramId: ${telegramId}`);
     const user = await this.userService.findByTelegramId(telegramId);
-    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
-    return this.orderRepository.find({
+    if (!user) {
+      this.logger.error(`User not found for telegramId: ${telegramId}`);
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
+    const orders = await this.orderRepository.find({
       where: { user: { id: user.id } },
       relations: ['orderItems', 'orderItems.product', 'deliveries'],
     });
+    this.logger.log(`Found ${orders.length} orders for user ${telegramId}`);
+    return orders;
   }
 
   async updateStatus(id: number, status: typeof ORDER_STATUS[keyof typeof ORDER_STATUS]): Promise<Order> {
@@ -130,6 +159,7 @@ export class OrderService {
     soldProducts: number;
     cartItems: number;
   }> {
+    this.logger.log('Fetching order stats');
     const orders = await this.orderRepository.find({ relations: ['orderItems', 'orderItems.product'] });
     const cartItems = await this.cartService.getAllCartItems();
 

@@ -60,17 +60,44 @@ export class CallbackHandler {
           await this.telegramService.sendMessage(chatId, 'Mahsulot savatchaga qo‘shildi.');
         } else if (data === 'place_order') {
           const order = await this.orderService.createOrder(telegramId);
-          await this.telegramService.sendMessage(chatId, 'Yetkazib berish manzilini kiriting:', { reply_markup: { force_reply: true } });
-          bot.once('message', async (msg) => {
+          await this.telegramService.sendMessage(chatId, 'Iltimos, yetkazib berish manzilingizni yuboring:', {
+            reply_markup: {
+              keyboard: [[{ text: '📍 Manzilni yuborish', request_location: true }]],
+              one_time_keyboard: true,
+              resize_keyboard: true,
+            },
+          });
+          bot.once('location', async (msg) => {
             try {
-              await this.deliveryService.create({ orderId: order.id, address: msg.text });
-              await this.telegramService.sendMessage(chatId, `Buyurtma yaratildi. ID: ${order.id}`, {
-                reply_markup: {
-                  inline_keyboard: [
-                    [{ text: '💵 Click orqali to‘lash', callback_data: `pay_${order.id}_click` }],
-                    [{ text: '💵 Payme orqali to‘lash', callback_data: `pay_${order.id}_payme` }],
-                  ],
-                },
+              await this.telegramService.sendMessage(chatId, 'Iltimos, xonadon raqami, qavat yoki qo‘shimcha ma’lumotlarni kiriting (masalan: 12-xonadon, 3-qavat):', {
+                reply_markup: { force_reply: true },
+              });
+              bot.once('message', async (msgDetails) => {
+                try {
+                  const delivery = await this.deliveryService.create({
+                    orderId: order.id,
+                    latitude: msg.location.latitude,
+                    longitude: msg.location.longitude,
+                    addressDetails: msgDetails.text,
+                  });
+                  const items = order.orderItems?.map((item) => `${item.product.name} - ${item.quantity} dona`).join(', ');
+                  const message = `Buyurtma yaratildi.\nID: ${order.id}\nMahsulotlar: ${items || 'N/A'}\nManzil: (${delivery.latitude}, ${delivery.longitude})\nQo‘shimcha: ${delivery.addressDetails || 'N/A'}\nYetkazib beruvchi: ${delivery.courierName || 'N/A'}\nTelefon: ${delivery.courierPhone || 'N/A'}\nTaxminiy yetkazib berish sanasi: ${delivery.deliveryDate?.toLocaleString() || 'N/A'}`;
+                  await this.telegramService.sendMessage(chatId, message, {
+                    reply_markup: {
+                      inline_keyboard: [
+                        [{ text: '💵 Click orqali to‘lash', callback_data: `pay_${order.id}_click` }],
+                        [{ text: '💵 Payme orqali to‘lash', callback_data: `pay_${order.id}_payme` }],
+                      ],
+                    },
+                  });
+                  // Notify admin with delivery details
+                  const adminChatId = '5661241603';
+                  const adminMessage = `Yangi buyurtma!\nID: ${order.id}\nFoydalanuvchi: ${order.user?.fullName || 'Noma’lum'}\nMahsulotlar: ${items || 'N/A'}\nJami: ${order.totalAmount} so‘m\nStatus: ${order.status}\nManzil: (${delivery.latitude}, ${delivery.longitude})\nQo‘shimcha: ${delivery.addressDetails || 'N/A'}\nYetkazib beruvchi: ${delivery.courierName || 'N/A'}\nTelefon: ${delivery.courierPhone || 'N/A'}\nTaxminiy yetkazib berish sanasi: ${delivery.deliveryDate?.toLocaleString() || 'N/A'}`;
+                  await this.telegramService.sendMessage(adminChatId, adminMessage);
+                } catch (error) {
+                  this.logger.error(`Error in delivery: ${error.message}`);
+                  await this.telegramService.sendMessage(chatId, 'Yetkazib berish ma’lumotlarini saqlashda xato yuz berdi.');
+                }
               });
             } catch (error) {
               this.logger.error(`Error in delivery: ${error.message}`);
@@ -244,7 +271,7 @@ export class CallbackHandler {
           await this.telegramService.sendMessage(chatId, formatUserList(users));
         } else if (data === 'edit_user') {
           const users = await this.userService.findAll();
-          const keyboard = users.map((user) => [{ text: user.fullName, callback_data: `edit_user_${user.id}` }]);
+          const keyboard = users.map((user) => [{ text: user.fullName || 'Noma’lum', callback_data: `edit_user_${user.id}` }]);
           await this.telegramService.sendMessage(chatId, 'Tahrir qilinadigan foydalanuvchini tanlang:', { reply_markup: { inline_keyboard: keyboard } });
         } else if (data.startsWith('edit_user_')) {
           const userId = parseInt(data.split('_')[2]);
@@ -261,7 +288,7 @@ export class CallbackHandler {
           });
         } else if (data === 'delete_user') {
           const users = await this.userService.findAll();
-          const keyboard = users.map((user) => [{ text: user.fullName, callback_data: `delete_user_${user.id}` }]);
+          const keyboard = users.map((user) => [{ text: user.fullName || 'Noma’lum', callback_data: `delete_user_${user.id}` }]);
           await this.telegramService.sendMessage(chatId, 'O‘chiriladigan foydalanuvchini tanlang:', { reply_markup: { inline_keyboard: keyboard } });
         } else if (data.startsWith('delete_user_')) {
           const userId = parseInt(data.split('_')[2]);
@@ -284,7 +311,7 @@ export class CallbackHandler {
             }
           });
         } else if (data === 'view_orders') {
-          const orders = await this.orderService.findAll();
+          const orders = await this.orderService.getUserOrders(telegramId);
           await this.telegramService.sendMessage(chatId, formatOrderList(orders));
         } else if (data === 'view_deliveries') {
           const deliveries = await this.deliveryService.findAll();
@@ -340,6 +367,8 @@ export class CallbackHandler {
       } catch (error) {
         this.logger.error(`Error in callback: ${error.message}`);
         await this.telegramService.sendMessage(chatId, 'Xatolik yuz berdi, iltimos keyinroq urinib ko‘ring.');
+      } finally {
+        await query.answerCbQuery();
       }
     });
   }

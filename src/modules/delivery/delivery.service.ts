@@ -21,8 +21,13 @@ export class DeliveryService {
 
     const delivery = this.deliveryRepository.create({
       order,
-      address: dto.address,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      addressDetails: dto.addressDetails,
       status: DELIVERY_STATUS.PENDING,
+      courierName: 'Ali Valiev',
+      courierPhone: '+998901234567',
+      deliveryDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
       createdAt: new Date(),
     });
 
@@ -51,9 +56,10 @@ export class DeliveryService {
         delivery.deliveryDate = new Date();
       }
     }
-    if (dto.trackingNumber) {
-      delivery.trackingNumber = dto.trackingNumber;
-    }
+    if (dto.trackingNumber) delivery.trackingNumber = dto.trackingNumber;
+    if (dto.courierName) delivery.courierName = dto.courierName;
+    if (dto.courierPhone) delivery.courierPhone = dto.courierPhone;
+    if (dto.deliveryDate) delivery.deliveryDate = dto.deliveryDate;
     return this.deliveryRepository.save(delivery);
   }
 

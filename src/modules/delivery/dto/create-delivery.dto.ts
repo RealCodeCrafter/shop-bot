@@ -1,4 +1,6 @@
 export class CreateDeliveryDto {
   orderId: number;
-  address: string;
+  latitude: number;
+  longitude: number;
+  addressDetails?: string;
 }

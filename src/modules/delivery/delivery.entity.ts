@@ -10,17 +10,29 @@ export class Delivery {
   @ManyToOne(() => Order, (order) => order.deliveries, { onDelete: 'CASCADE' })
   order: Order;
 
-  @Column()
-  address: string;
+  @Column({ type: 'float' })
+  latitude: number;
+
+  @Column({ type: 'float' })
+  longitude: number;
 
   @Column({ nullable: true })
-  deliveryDate: Date;
+  addressDetails: string; // Xonadon raqami, qavat, qo‘shimcha ma’lumotlar
 
   @Column({ type: 'enum', enum: DELIVERY_STATUS, default: DELIVERY_STATUS.PENDING })
   status: typeof DELIVERY_STATUS[keyof typeof DELIVERY_STATUS];
 
   @Column({ nullable: true })
   trackingNumber: string;
+
+  @Column({ nullable: true })
+  courierName: string;
+
+  @Column({ nullable: true })
+  courierPhone: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  deliveryDate: Date; // `estimatedDeliveryTime` o‘rniga asl `deliveryDate` saqlanadi
 
   @Column()
   createdAt: Date;
