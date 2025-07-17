@@ -1,17 +1,25 @@
 import { TelegramBot } from 'node-telegram-bot-api';
 import { KeyboardOptions } from './interfaces';
 
+
 export function getMainKeyboard(showContact: boolean): TelegramBot.SendMessageOptions['reply_markup'] {
   const keyboard: TelegramBot.KeyboardButton[][] = [
     [{ text: '📁 Kategoriyalar' }, { text: '🛒 Savatcha' }],
     [{ text: '👤 Profilim' }, { text: '🕘 Buyurtma tarixi' }],
     [{ text: 'ℹ️ Biz haqimizda' }, { text: '🆘 Yordam' }],
   ];
+
   if (showContact) {
     keyboard.unshift([{ text: '📞 Telefon raqamni yuborish', request_contact: true }]);
   }
-  return { keyboard, resize_keyboard: true, one_time_keyboard: showContact };
+
+  return {
+    keyboard,
+    resize_keyboard: true,
+    one_time_keyboard: false,
+  };
 }
+
 
 export function getAdminKeyboard(): TelegramBot.SendMessageOptions['reply_markup'] {
   return {
