@@ -82,6 +82,7 @@ export class OrderService {
 
     await this.cartService.clearCart(telegramId);
 
+    // Faqat admin uchun xabar yuboramiz
     await this.notifyAdminOrderCreated(savedOrder, user);
 
     return savedOrder;
@@ -96,7 +97,9 @@ export class OrderService {
 👤 <b>Foydalanuvchi:</b> ${user.fullName || 'Kiritilmagan'}
 📦 <b>Mahsulotlar:</b> ${items || 'N/A'}
 💸 <b>Jami:</b> ${order.totalAmount} so‘m
-📊 <b>Status:</b> ${order.status}`;
+📊 <b>Status:</b> ${order.status}
+━━━━━━━━━━━━━━━
+`;
     await this.telegramService.sendMessage(adminChatId, message, { parse_mode: 'HTML' });
   }
 

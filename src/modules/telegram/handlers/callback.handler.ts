@@ -102,27 +102,11 @@ export class CallbackHandler {
                     parse_mode: 'HTML',
                     reply_markup: {
                       inline_keyboard: [
-                        [{ text: '💵 Click orqali to‘lash', callback_data: `confirm_payment_${order.id}_${PAYMENT_TYPE.CLICK}` }],
-                        [{ text: '💵 Payme orqali to‘lash', callback_data: `confirm_payment_${order.id}_${PAYMENT_TYPE.PAYME}` }],
+                        [{ text: '💵 Click orqali to‘lash', callback_data: `confirm_payment_${order.id}_click` }],
+                        [{ text: '💵 Payme orqali to‘lash', callback_data: `confirm_payment_${order.id}_payme` }],
                       ],
                     },
                   });
-                  const adminChatId = '5661241603';
-                  const adminMessage = `
-🔔 <b>Yangi buyurtma yaratildi!</b>
-📋 <b>ID:</b> ${order.id}
-👤 <b>Foydalanuvchi:</b> ${order.user?.fullName || 'Kiritilmagan'}
-📦 <b>Mahsulotlar:</b> ${items || 'N/A'}
-💸 <b>Jami:</b> ${order.totalAmount} so‘m
-📊 <b>Status:</b> ${order.status}
-📍 <b>Manzil:</b> (${delivery.latitude}, ${delivery.longitude})
-🏠 <b>Qo‘shimcha:</b> ${delivery.addressDetails || 'N/A'}
-🚚 <b>Yetkazib beruvchi:</b> ${delivery.courierName || 'N/A'}
-📞 <b>Telefon:</b> ${delivery.courierPhone || 'N/A'}
-📅 <b>Taxminiy yetkazib berish sanasi:</b> ${delivery.deliveryDate?.toLocaleString('uz-UZ') || 'N/A'}
-━━━━━━━━━━━━━━━
-`;
-                  await this.telegramService.sendMessage(adminChatId, adminMessage, { parse_mode: 'HTML' });
                 } catch (error) {
                   this.logger.error(`Error in delivery: ${error.message}`);
                   await this.telegramService.sendMessage(chatId, '❌ Yetkazib berish ma’lumotlarini saqlashda xato yuz berdi.');
@@ -135,16 +119,24 @@ export class CallbackHandler {
           });
         } else if (data.startsWith('confirm_payment_')) {
           const [_, orderId, paymentType] = data.split('_');
+          this.logger.log(`Confirming payment for orderId: ${orderId}, paymentType: ${paymentType}`);
           if (![PAYMENT_TYPE.CLICK, PAYMENT_TYPE.PAYME].includes(paymentType)) {
+            this.logger.error(`Invalid payment type: ${paymentType}`);
             await this.telegramService.sendMessage(chatId, '❌ Noto‘g‘ri to‘lov turi.');
             return;
           }
           const order = await this.orderService.findOne(parseInt(orderId));
           if (!order) {
+            this.logger.error(`Order not found for ID: ${orderId}`);
             await this.telegramService.sendMessage(chatId, '❌ Buyurtma topilmadi.');
             return;
           }
           const delivery = await this.deliveryService.findOneByOrderId(order.id);
+          if (!delivery) {
+            this.logger.error(`Delivery not found for order ID: ${orderId}`);
+            await this.telegramService.sendMessage(chatId, '❌ Yetkazib berish ma’lumotlari topilmadi.');
+            return;
+          }
           await this.orderService.updateStatus(parseInt(orderId), ORDER_STATUS.PAID);
           await this.orderService.update(parseInt(orderId), { paymentType });
           const items = order.orderItems?.map((item) => `${item.product.name} - ${item.quantity} dona`).join(', ');
