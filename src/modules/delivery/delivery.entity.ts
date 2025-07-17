@@ -2,7 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
 import { Order } from '../order/order.entity';
 import { DELIVERY_STATUS } from '../../common/constants';
 
-@Entity()
+@Entity('deliverys')
 export class Delivery {
   @PrimaryGeneratedColumn()
   id: number;
@@ -32,7 +32,7 @@ export class Delivery {
   courierPhone: string;
 
   @Column({ type: 'timestamp', nullable: true })
-  deliveryDate: Date; // `estimatedDeliveryTime` o‘rniga asl `deliveryDate` saqlanadi
+  deliveryDate: Date; 
 
   @Column()
   createdAt: Date;
