@@ -51,6 +51,15 @@ export class DeliveryService {
     return delivery;
   }
 
+  async findOneByOrderId(orderId: number): Promise<Delivery> {
+    const delivery = await this.deliveryRepository.findOne({
+      where: { order: { id: orderId } },
+      relations: ['order', 'order.user'],
+    });
+    if (!delivery) throw new NotFoundException(`Order ID ${orderId} uchun yetkazib berish topilmadi`);
+    return delivery;
+  }
+
   async update(id: number, dto: UpdateDeliveryDto): Promise<Delivery> {
     const delivery = await this.findOne(id);
     if (dto.status) {

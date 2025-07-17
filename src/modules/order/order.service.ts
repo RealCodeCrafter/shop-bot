@@ -90,8 +90,14 @@ export class OrderService {
   async notifyAdminOrderCreated(order: Order, user: any) {
     const adminChatId = '5661241603';
     const items = order.orderItems?.map((item) => `${item.product.name} - ${item.quantity} dona`).join(', ');
-    const message = `Yangi buyurtma!\nID: ${order.id}\nFoydalanuvchi: ${user.fullName || 'Noma’lum'}\nMahsulotlar: ${items || 'N/A'}\nJami: ${order.totalAmount} so‘m\nStatus: ${order.status}`;
-    await this.telegramService.sendMessage(adminChatId, message);
+    const message = `
+🔔 <b>Yangi buyurtma yaratildi!</b>
+📋 <b>ID:</b> ${order.id}
+👤 <b>Foydalanuvchi:</b> ${user.fullName || 'Kiritilmagan'}
+📦 <b>Mahsulotlar:</b> ${items || 'N/A'}
+💸 <b>Jami:</b> ${order.totalAmount} so‘m
+📊 <b>Status:</b> ${order.status}`;
+    await this.telegramService.sendMessage(adminChatId, message, { parse_mode: 'HTML' });
   }
 
   async findAll(page: number = 1, limit: number = 10): Promise<Order[]> {
@@ -115,6 +121,9 @@ export class OrderService {
       this.logger.error(`Order ID ${id} not found`);
       throw new NotFoundException(`ID ${id} bo'yicha buyurtma topilmadi`);
     }
+    if (!order.user) {
+      this.logger.warn(`Order ID ${id} has no associated user`);
+    }
     return order;
   }
 
@@ -127,7 +136,7 @@ export class OrderService {
     }
     const orders = await this.orderRepository.find({
       where: { user: { id: user.id } },
-      relations: ['orderItems', 'orderItems.product', 'deliveries'],
+      relations: ['user', 'orderItems', 'orderItems.product', 'deliveries'],
       skip: (page - 1) * limit,
       take: limit,
     });
@@ -141,8 +150,8 @@ export class OrderService {
     order.updatedAt = new Date();
     await this.orderRepository.save(order);
 
-    const message = `Buyurtma #${id} statusi yangilandi: ${status}`;
-    await this.telegramService.sendMessage(order.user.telegramId, message);
+    const message = `📋 Buyurtma #${id} statusi yangilandi: ${status}`;
+    await this.telegramService.sendMessage(order.user.telegramId, message, { parse_mode: 'HTML' });
 
     return order;
   }
@@ -160,6 +169,10 @@ export class OrderService {
     monthlyStats: any;
     yearlyStats: any;
     pendingOrders: number;
+    paidOrders: number;
+    shippedOrders: number;
+    deliveredOrders: number;
+    cancelledOrders: number;
     soldProducts: number;
     cartItems: number;
   }> {
@@ -170,23 +183,50 @@ export class OrderService {
     const monthlyStats = {};
     const yearlyStats = {};
     let pendingOrders = 0;
+    let paidOrders = 0;
+    let shippedOrders = 0;
+    let deliveredOrders = 0;
+    let cancelledOrders = 0;
     let soldProducts = 0;
+    let totalAmount = 0;
+
+    const paidStatuses = [ORDER_STATUS.PAID, ORDER_STATUS.SHIPPED, ORDER_STATUS.DELIVERED] as const;
 
     orders.forEach((order) => {
-      const month = order.createdAt.toISOString().slice(0, 7);
-      const year = order.createdAt.getFullYear();
-      monthlyStats[month] = (monthlyStats[month] || 0) + order.totalAmount;
-      yearlyStats[year] = (yearlyStats[year] || 0) + order.totalAmount;
-      if (order.status === ORDER_STATUS.PENDING) pendingOrders++;
-      order.orderItems.forEach((item) => (soldProducts += item.quantity));
+      if (order.status === ORDER_STATUS.PENDING) {
+        pendingOrders++;
+      } else if (order.status === ORDER_STATUS.PAID) {
+        paidOrders++;
+        totalAmount += order.totalAmount;
+      } else if (order.status === ORDER_STATUS.SHIPPED) {
+        shippedOrders++;
+        totalAmount += order.totalAmount;
+      } else if (order.status === ORDER_STATUS.DELIVERED) {
+        deliveredOrders++;
+        totalAmount += order.totalAmount;
+      } else if (order.status === ORDER_STATUS.CANCELLED) {
+        cancelledOrders++;
+      }
+      
+      if (paidStatuses.includes(order.status as typeof ORDER_STATUS.PAID | typeof ORDER_STATUS.SHIPPED | typeof ORDER_STATUS.DELIVERED)) {
+        const month = order.createdAt.toISOString().slice(0, 7);
+        const year = order.createdAt.getFullYear();
+        monthlyStats[month] = (monthlyStats[month] || 0) + order.totalAmount;
+        yearlyStats[year] = (yearlyStats[year] || 0) + order.totalAmount;
+        order.orderItems.forEach((item) => (soldProducts += item.quantity));
+      }
     });
 
     return {
       totalOrders: orders.length,
-      totalAmount: orders.reduce((sum, order) => sum + order.totalAmount, 0),
+      totalAmount,
       monthlyStats,
       yearlyStats,
       pendingOrders,
+      paidOrders,
+      shippedOrders,
+      deliveredOrders,
+      cancelledOrders,
       soldProducts,
       cartItems: cartItems.length,
     };
