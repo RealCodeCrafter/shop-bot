@@ -92,12 +92,12 @@ export class OrderService {
     const adminChatId = '5661241603';
     const items = order.orderItems?.map((item) => `${item.product.name} - ${item.quantity} dona`).join(', ');
     const message = `
-🔔 <b>Yangi buyurtma yaratildi!</b>
-📋 <b>ID:</b> ${order.id}
-👤 <b>Foydalanuvchi:</b> ${user.fullName || 'Kiritilmagan'}
-📦 <b>Mahsulotlar:</b> ${items || 'N/A'}
-💸 <b>Jami:</b> ${order.totalAmount} so‘m
-📊 <b>Status:</b> ${order.status}
+    🔔 <b>Yangi buyurtma yaratildi!</b>
+    📋 <b>ID:</b> ${order.id}
+    👤 <b>Foydalanuvchi:</b> ${user.fullName || 'Kiritilmagan'}
+    📦 <b>Mahsulotlar:</b> ${items || 'N/A'}
+    💸 <b>Jami:</b> ${order.totalAmount} so‘m
+    📊 <b>Status:</b> ${order.status}
 ━━━━━━━━━━━━━━━
 `;
     await this.telegramService.sendMessage(adminChatId, message, { parse_mode: 'HTML' });
