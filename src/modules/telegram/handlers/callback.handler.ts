@@ -11,8 +11,7 @@ import { UserService } from '../../user/user.service';
 import { DeliveryService } from '../../delivery/delivery.service';
 import { TelegramService } from '../telegram.service';
 import { formatProductMessage, formatCategoryList, formatProductList, formatUserList, formatOrderList, formatFeedbackList, formatDeliveryList, formatStats } from '../utils/helpers';
-import { PAYMENT_TYPE } from '../../../common/constants';
-import { ORDER_STATUS } from '../../../common/constants';
+import { PAYMENT_TYPE, ORDER_STATUS } from '../../../common/constants';
 
 @Injectable()
 export class CallbackHandler {
@@ -136,11 +135,15 @@ export class CallbackHandler {
           });
         } else if (data.startsWith('confirm_payment_')) {
           const [_, orderId, paymentType] = data.split('_');
-          if (!Object.values(PAYMENT_TYPE).includes(paymentType)) {
+          if (![PAYMENT_TYPE.CLICK, PAYMENT_TYPE.PAYME].includes(paymentType)) {
             await this.telegramService.sendMessage(chatId, '❌ Noto‘g‘ri to‘lov turi.');
             return;
           }
           const order = await this.orderService.findOne(parseInt(orderId));
+          if (!order) {
+            await this.telegramService.sendMessage(chatId, '❌ Buyurtma topilmadi.');
+            return;
+          }
           const delivery = await this.deliveryService.findOneByOrderId(order.id);
           await this.orderService.updateStatus(parseInt(orderId), ORDER_STATUS.PAID);
           await this.orderService.update(parseInt(orderId), { paymentType });
