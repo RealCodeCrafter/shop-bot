@@ -22,16 +22,20 @@ export class PaymentService {
     throw new NotFoundException(`ID ${orderId} bo'yicha buyurtma topilmadi`);
   }
 
-  const testUrl = `https://example.com/pay/${paymentType}/${order.id}`;
+  const normalizedType = (paymentType || '').toString().trim().toLowerCase();
 
-  const normalizedPaymentType =
-    paymentType.toLowerCase() === 'click' ? PAYMENT_TYPE.CLICK :
-    paymentType.toLowerCase() === 'payme' ? PAYMENT_TYPE.PAYME :
-    null;
+  let normalizedPaymentType: typeof PAYMENT_TYPE[keyof typeof PAYMENT_TYPE];
 
-  if (!normalizedPaymentType) {
-    throw new Error('Noto‘g‘ri to‘lov turi');
+  if (normalizedType === PAYMENT_TYPE.CLICK) {
+    normalizedPaymentType = PAYMENT_TYPE.CLICK;
+  } else if (normalizedType === PAYMENT_TYPE.PAYME) {
+    normalizedPaymentType = PAYMENT_TYPE.PAYME;
+  } else {
+    throw new Error('❌ Noto‘g‘ri to‘lov turi');
   }
+
+  // Test qilish uchun oddiy link
+  const testUrl = `https://example.com/pay/${normalizedPaymentType}/${order.id}`;
 
   const payment = this.paymentRepository.create({
     order,
@@ -40,11 +44,13 @@ export class PaymentService {
     status: 'Pending',
     createdAt: new Date(),
   });
+
   await this.paymentRepository.save(payment);
   await this.orderService.update(order.id, { paymentType: normalizedPaymentType });
 
   return testUrl;
 }
+
 
 
   // async generatePaymentLink(orderId: number, paymentType: string): Promise<string> {
