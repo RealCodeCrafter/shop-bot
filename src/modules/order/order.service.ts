@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from './order.entity';
@@ -9,6 +9,7 @@ import { UserService } from '../user/user.service';
 import { CartService } from '../cart/cart.service';
 import { ProductService } from '../product/product.service';
 import { ORDER_STATUS } from '../../common/constants';
+import { TelegramService } from '../telegram/telegram.service';
 
 @Injectable()
 export class OrderService {
@@ -20,6 +21,8 @@ export class OrderService {
     private userService: UserService,
     private cartService: CartService,
     private productService: ProductService,
+    @Inject(forwardRef(() => TelegramService))
+    private telegramService: TelegramService,
   ) {}
 
   async createOrder(telegramId: string): Promise<Order> {
@@ -35,74 +38,123 @@ export class OrderService {
       status: ORDER_STATUS.PENDING,
       paymentType: null,
       createdAt: new Date(),
+      updatedAt: new Date(),
     });
     const savedOrder = await this.orderRepository.save(order);
 
-    // Buyurtma elementlarini yaratish va totalAmount ni hisoblash
     let totalAmount = 0;
     const orderItems = await Promise.all(
       cartItems.map(async (item) => {
         const product = await this.productService.findOne(item.product.id);
         if (!product) throw new NotFoundException(`Mahsulot ID ${item.product.id} topilmadi`);
+        if (product.stock < item.quantity) throw new Error(`Mahsulot ${product.name} yetarli emas`);
         totalAmount += item.product.price * item.quantity;
-        return this.orderItemRepository.save(
-          this.orderItemRepository.create({
-            order: savedOrder,
-            product: item.product,
-            quantity: item.quantity,
-            price: item.product.price,
-          }),
-        );
+        product.stock -= item.quantity;
+        await this.productService.update(item.product.id, { stock: product.stock });
+        return this.orderItemRepository.create({
+          order: savedOrder,
+          product: item.product,
+          quantity: item.quantity,
+          price: item.product.price,
+        });
       }),
     );
+
+    await this.orderItemRepository.save(orderItems);
     savedOrder.totalAmount = totalAmount;
+    savedOrder.orderItems = orderItems;
     await this.orderRepository.save(savedOrder);
 
     await this.cartService.clearCart(telegramId);
 
-    savedOrder.orderItems = orderItems;
+    // Notify admin
+    await this.notifyAdminOrderCreated(savedOrder, user);
+
     return savedOrder;
   }
 
+  async notifyAdminOrderCreated(order: Order, user: any) {
+    const adminChatId = '5661241603'; // Replace with actual admin chat ID
+    const message = `Yangi buyurtma!\nID: ${order.id}\nFoydalanuvchi: ${user.fullName}\nJami: ${order.totalAmount} so‘m\nStatus: ${order.status}`;
+    await this.telegramService.sendMessage(adminChatId, message);
+  }
+
   async findAll(): Promise<Order[]> {
-    return this.orderRepository.find({ relations: ['user', 'orderItems', 'orderItems.product'] });
+    return this.orderRepository.find({ relations: ['user', 'orderItems', 'orderItems.product', 'deliveries'] });
   }
 
   async findOne(id: number): Promise<Order> {
-    const order = await this.orderRepository.findOne({ where: { id }, relations: ['user', 'orderItems', 'orderItems.product'] });
-    if (!order) {
-      throw new NotFoundException(`ID ${id} bo'yicha buyurtma topilmadi`);
-    }
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['user', 'orderItems', 'orderItems.product', 'deliveries'],
+    });
+    if (!order) throw new NotFoundException(`ID ${id} bo'yicha buyurtma topilmadi`);
     return order;
   }
 
   async getUserOrders(telegramId: string): Promise<Order[]> {
     const user = await this.userService.findByTelegramId(telegramId);
     if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
-    return this.orderRepository.find({ where: { user: { id: user.id } }, relations: ['orderItems', 'orderItems.product'] });
+    return this.orderRepository.find({
+      where: { user: { id: user.id } },
+      relations: ['orderItems', 'orderItems.product', 'deliveries'],
+    });
   }
 
   async updateStatus(id: number, status: typeof ORDER_STATUS[keyof typeof ORDER_STATUS]): Promise<Order> {
-    const result = await this.orderRepository.update(id, { status });
-    if (result.affected === 0) {
-      throw new NotFoundException(`ID ${id} bo'yicha buyurtma topilmadi`);
-    }
-    return this.findOne(id);
+    const order = await this.findOne(id);
+    order.status = status;
+    order.updatedAt = new Date();
+    await this.orderRepository.save(order);
+
+    // Notify user
+    const message = `Buyurtma #${id} statusi yangilandi: ${status}`;
+    await this.telegramService.sendMessage(order.user.telegramId, message);
+
+    return order;
   }
 
   async update(id: number, dto: UpdateOrderDto): Promise<Order> {
-    const result = await this.orderRepository.update(id, dto);
-    if (result.affected === 0) {
-      throw new NotFoundException(`ID ${id} bo'yicha buyurtma topilmadi`);
-    }
-    return this.findOne(id);
+    const order = await this.findOne(id);
+    Object.assign(order, dto);
+    order.updatedAt = new Date();
+    return this.orderRepository.save(order);
   }
 
-  async getStats(): Promise<{ totalOrders: number; totalAmount: number }> {
-    const orders = await this.orderRepository.find();
+  async getStats(): Promise<{
+    totalOrders: number;
+    totalAmount: number;
+    monthlyStats: any;
+    yearlyStats: any;
+    pendingOrders: number;
+    soldProducts: number;
+    cartItems: number;
+  }> {
+    const orders = await this.orderRepository.find({ relations: ['orderItems', 'orderItems.product'] });
+    const cartItems = await this.cartService.getAllCartItems();
+
+    const monthlyStats = {};
+    const yearlyStats = {};
+    let pendingOrders = 0;
+    let soldProducts = 0;
+
+    orders.forEach((order) => {
+      const month = order.createdAt.toISOString().slice(0, 7); // YYYY-MM
+      const year = order.createdAt.getFullYear();
+      monthlyStats[month] = (monthlyStats[month] || 0) + order.totalAmount;
+      yearlyStats[year] = (yearlyStats[year] || 0) + order.totalAmount;
+      if (order.status === ORDER_STATUS.PENDING) pendingOrders++;
+      order.orderItems.forEach((item) => (soldProducts += item.quantity));
+    });
+
     return {
       totalOrders: orders.length,
       totalAmount: orders.reduce((sum, order) => sum + order.totalAmount, 0),
+      monthlyStats,
+      yearlyStats,
+      pendingOrders,
+      soldProducts,
+      cartItems: cartItems.length,
     };
   }
 }

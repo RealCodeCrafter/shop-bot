@@ -27,71 +27,43 @@ export class UserService {
   }
 
   async findByTelegramId(telegramId: string): Promise<User> {
-    try {
-      const user = await this.userRepository.findOne({ where: { telegramId }, relations: ['orders'] });
-      if (!user) {
-        throw new NotFoundException('Foydalanuvchi topilmadi');
-      }
-      return user;
-    } catch (error) {
-      throw new NotFoundException('Foydalanuvchi topilmadi');
-    }
+    const user = await this.userRepository.findOne({
+      where: { telegramId },
+      relations: ['orders', 'cartItems', 'feedbacks'],
+    });
+    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
+    return user;
   }
 
   async findOne(id: number): Promise<User> {
-    try {
-      const user = await this.userRepository.findOneBy({ id });
-      if (!user) {
-        throw new NotFoundException('Foydalanuvchi topilmadi');
-      }
-      return user;
-    } catch (error) {
-      throw new NotFoundException('Foydalanuvchi topilmadi');
-    }
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['orders', 'cartItems', 'feedbacks'],
+    });
+    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
+    return user;
   }
 
   async findAll(): Promise<User[]> {
-    try {
-      return await this.userRepository.find();
-    } catch (error) {
-      throw new Error('Foydalanuvchilarni olishda xato yuz berdi');
-    }
+    return this.userRepository.find({ relations: ['orders', 'cartItems', 'feedbacks'] });
   }
 
   async update(id: number, dto: UpdateUserDto): Promise<User> {
-    try {
-      const result = await this.userRepository.update(id, dto);
-      if (result.affected === 0) {
-        throw new NotFoundException('Foydalanuvchi topilmadi');
-      }
-      return await this.findOne(id);
-    } catch (error) {
-      throw new NotFoundException('Foydalanuvchi ma‘lumotlarini yangilashda xato yuz berdi');
-    }
+    const user = await this.findOne(id);
+    Object.assign(user, dto);
+    return this.userRepository.save(user);
   }
 
   async updatePhoneNumber(telegramId: string, phone: string): Promise<User> {
-  try {
-    const user = await this.userRepository.findOne({ where: { telegramId } });
-    if (!user) {
-      throw new NotFoundException('Foydalanuvchi topilmadi');
-    }
+    const user = await this.findByTelegramId(telegramId);
     user.phone = phone;
-    await this.userRepository.save(user);
-    return user;
-  } catch (error) {
-    throw new Error('Telefon raqamini yangilashda xato yuz berdi');
+    return this.userRepository.save(user);
   }
-}
 
   async remove(id: number): Promise<void> {
-    try {
-      const result = await this.userRepository.delete(id);
-      if (result.affected === 0) {
-        throw new NotFoundException('Foydalanuvchi topilmadi');
-      }
-    } catch (error) {
-      throw new Error('Foydalanuvchini o‘chirishda xato yuz berdi');
+    const result = await this.userRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
     }
   }
 }

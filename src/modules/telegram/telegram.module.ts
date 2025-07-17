@@ -1,4 +1,4 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { TelegramService } from './telegram.service';
 import { TelegramController } from './telegram.controller';
 import { UserModule } from '../user/user.module';
@@ -9,6 +9,7 @@ import { OrderModule } from '../order/order.module';
 import { FeedbackModule } from '../feedback/feedback.module';
 import { PromocodeModule } from '../promocode/promocode.module';
 import { PaymentModule } from '../payment/payment.module';
+import { DeliveryModule } from '../delivery/delivery.module';
 import { StartHandler } from './handlers/start.handler';
 import { ContactHandler } from './handlers/contact.handler';
 import { CategoriesHandler } from './handlers/categories.handler';
@@ -25,10 +26,11 @@ import { ConfigModule } from '@nestjs/config';
     CategoryModule,
     ProductModule,
     CartModule,
-    OrderModule,
+    forwardRef(() => OrderModule),
     FeedbackModule,
     PromocodeModule,
-    PaymentModule,
+    forwardRef(() => PaymentModule),
+    DeliveryModule,
   ],
   controllers: [TelegramController],
   providers: [

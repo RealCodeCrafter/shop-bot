@@ -21,13 +21,17 @@ export class CartService {
     const product = await this.productService.findOne(dto.productId);
     if (!user || !product) throw new Error('Foydalanuvchi yoki mahsulot topilmadi');
     if (product.stock < dto.quantity) throw new Error('Mahsulot yetarli emas');
-    
-    const cartItem = await this.cartRepository.findOne({ where: { user: { id: user.id }, product: { id: product.id } } });
+
+    const cartItem = await this.cartRepository.findOne({
+      where: { user: { id: user.id }, product: { id: product.id } },
+      relations: ['product', 'user'],
+    });
+
     if (cartItem) {
       cartItem.quantity += dto.quantity;
       return this.cartRepository.save(cartItem);
     }
-    
+
     return this.cartRepository.save({
       user,
       product,
@@ -38,7 +42,14 @@ export class CartService {
 
   async getCartItems(telegramId: string): Promise<Cart[]> {
     const user = await this.userService.findByTelegramId(telegramId);
-    return this.cartRepository.find({ where: { user: { id: user.id } }, relations: ['product'] });
+    return this.cartRepository.find({
+      where: { user: { id: user.id } },
+      relations: ['product', 'user'],
+    });
+  }
+
+  async getAllCartItems(): Promise<Cart[]> {
+    return this.cartRepository.find({ relations: ['product', 'user'] });
   }
 
   async clearCart(telegramId: string): Promise<void> {
@@ -47,15 +58,19 @@ export class CartService {
   }
 
   async update(id: number, dto: UpdateCartDto): Promise<Cart> {
-    await this.cartRepository.update(id, dto);
-    const updatedCart = await this.cartRepository.findOne({ where: { id }, relations: ['product', 'user'] });
-    if (!updatedCart) {
-      throw new NotFoundException(`ID ${id} bo'yicha savatcha topilmadi`);
-    }
-    return updatedCart;
+    const cartItem = await this.cartRepository.findOne({
+      where: { id },
+      relations: ['product', 'user'],
+    });
+    if (!cartItem) throw new NotFoundException(`ID ${id} bo'yicha savatcha topilmadi`);
+    Object.assign(cartItem, dto);
+    return this.cartRepository.save(cartItem);
   }
 
   async remove(id: number): Promise<void> {
-    await this.cartRepository.delete(id);
+    const result = await this.cartRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`ID ${id} bo'yicha savatcha topilmadi`);
+    }
   }
 }

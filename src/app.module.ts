@@ -11,6 +11,7 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { PromocodeModule } from './modules/promocode/promocode.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { CacheModule } from '@nestjs/cache-manager';
+import { DeliveryModule } from './modules/delivery/delivery.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { CacheModule } from '@nestjs/cache-manager';
     PaymentModule,
     PromocodeModule,
     TelegramModule,
+    DeliveryModule,
   ],
 })
 export class AppModule {}

@@ -1,12 +1,12 @@
-import { Category } from "src/modules/category/category.entity";
-import { Feedback } from "src/modules/feedback/feedback.entity";
-import { Order } from "src/modules/order/order.entity";
-import { Product } from "src/modules/product/product.entity";
-import { User } from "src/modules/user/user.entity";
-
+import { Category } from "../../category/category.entity";
+import { Feedback } from "../../feedback/feedback.entity";
+import { Order } from "../../order/order.entity";
+import { Product } from "../../product/product.entity";
+import { User } from "../../user/user.entity";
+import { Delivery } from "../../delivery/delivery.entity";
 
 export function formatProductMessage(product: Product): string {
-  return `${product.name}\n${product.description}\nNarxi: ${product.price} so‘m`;
+  return `${product.name}\n${product.description}\nNarxi: ${product.price} so‘m\nOmborda: ${product.stock} dona`;
 }
 
 export function formatCategoryList(categories: Category[]): string {
@@ -16,20 +16,29 @@ export function formatCategoryList(categories: Category[]): string {
 
 export function formatProductList(products: Product[]): string {
   if (!products.length) return 'Mahsulotlar mavjud emas.';
-  return products.map((prod) => `ID: ${prod.id}, Nomi: ${prod.name}, Narxi: ${prod.price} so‘m, Kategoriya ID: ${prod.category?.id || 'N/A'}`).join('\n');
+  return products.map((prod) => `ID: ${prod.id}, Nomi: ${prod.name}, Narxi: ${prod.price} so‘m, Kategoriya: ${prod.category?.name || 'N/A'}, Omborda: ${prod.stock}`).join('\n');
 }
 
 export function formatUserList(users: User[]): string {
   if (!users.length) return 'Foydalanuvchilar mavjud emas.';
-  return users.map((user) => `ID: ${user.id}, Telegram ID: ${user.telegramId}, Ism: ${user.fullName}, Telefon: ${user.phone || 'Kiritilmagan'}`).join('\n');
+  return users.map((user) => `ID: ${user.id}, Ism: ${user.fullName}, Telefon: ${user.phone || 'Kiritilmagan'}, Telegram ID: ${user.telegramId}, Admin: ${user.isAdmin ? 'Ha' : 'Yo‘q'}`).join('\n');
 }
 
 export function formatOrderList(orders: Order[]): string {
   if (!orders.length) return 'Buyurtmalar mavjud emas.';
-  return orders.map((order) => `ID: ${order.id}, Jami: ${order.totalAmount} so‘m, Status: ${order.status}`).join('\n');
+  return orders.map((order) => {
+    const items = order.orderItems?.map((item) => `${item.product.name} - ${item.quantity} dona`).join(', ');
+    const delivery = order.deliveries?.[0] ? `Yetkazib berish: ${order.deliveries[0].address}, Status: ${order.deliveries[0].status}` : 'Yetkazib berish ma‘lumotlari yo‘q';
+    return `ID: ${order.id}, Foydalanuvchi: ${order.user.fullName}, Jami: ${order.totalAmount} so‘m, Status: ${order.status}, Mahsulotlar: ${items || 'N/A'}, ${delivery}`;
+  }).join('\n\n');
 }
 
 export function formatFeedbackList(feedbacks: Feedback[]): string {
   if (!feedbacks.length) return 'Feedbacklar mavjud emas.';
-  return feedbacks.map((fb) => `Mahsulot ID: ${fb.product.id}, Reyting: ${fb.rating}, Izoh: ${fb.comment}`).join('\n');
+  return feedbacks.map((fb) => `ID: ${fb.id}, Mahsulot: ${fb.product.name}, Foydalanuvchi: ${fb.user.fullName}, Reyting: ${fb.rating}, Izoh: ${fb.comment}`).join('\n');
+}
+
+export function formatDeliveryList(deliveries: Delivery[]): string {
+  if (!deliveries.length) return 'Yetkazib berishlar mavjud emas.';
+  return deliveries.map((delivery) => `ID: ${delivery.id}, Buyurtma ID: ${delivery.order.id}, Manzil: ${delivery.address}, Status: ${delivery.status}, Kuzatuv raqami: ${delivery.trackingNumber || 'N/A'}, Yetkazib berish sanasi: ${delivery.deliveryDate?.toISOString().slice(0, 10) || 'N/A'}`).join('\n');
 }

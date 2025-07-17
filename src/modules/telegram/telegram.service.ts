@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import * as TelegramBot from 'node-telegram-bot-api';
 import { ConfigService } from '@nestjs/config';
-import { UserService } from './../user/user.service';
-import { OrderService } from './../order/order.service';
-import { formatOrderList } from './utils/helpers';
-import { getMainKeyboard } from './utils/keyboards';
+import { UserService } from '../user/user.service';
+import { OrderService } from '../order/order.service';
+import { DeliveryService } from '../delivery/delivery.service';
+import { formatOrderList, formatUserList, formatProductList, formatCategoryList, formatFeedbackList } from './utils/helpers';
+import { getMainKeyboard, getAdminKeyboard } from './utils/keyboards';
 
 @Injectable()
 export class TelegramService {
@@ -13,9 +14,10 @@ export class TelegramService {
   private readonly adminTelegramUser = 'Vali_003';
 
   constructor(
-    private configService: ConfigService,
-    private userService: UserService,
-    private orderService: OrderService,
+  private configService: ConfigService,
+  private userService: UserService,
+  @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
+  private deliveryService: DeliveryService,
   ) {
     const token = '7942071036:AAFz_o_p2p2o-Gq-1C1YZMQSdODCHJiu2dY';
     if (!token) {
@@ -46,22 +48,11 @@ export class TelegramService {
   }
 
   private setupCommands() {
-    // Profilim tugmasi
     this.bot.onText(/👤 Profilim/, async (msg) => {
       const chatId = msg.chat.id;
       const telegramId = msg.from.id.toString();
       try {
-        this.logger.log(`Processing profile for telegramId: ${telegramId}`);
-        const startTime = Date.now();
         const user = await this.userService.findByTelegramId(telegramId);
-        const duration = Date.now() - startTime;
-        this.logger.log(`Fetched user profile in ${duration}ms`);
-        if (!user) {
-          await this.bot.sendMessage(chatId, 'Foydalanuvchi topilmadi. Iltimos, /start buyrug‘i bilan ro‘yxatdan o‘ting.', {
-            reply_markup: getMainKeyboard(true),
-          });
-          return;
-        }
         const message = `👤 Profilim\nIsm: ${user.fullName}\nTelefon: ${user.phone || 'Kiritilmagan'}\nTelegram ID: ${user.telegramId}`;
         await this.bot.sendMessage(chatId, message, {
           reply_markup: getMainKeyboard(!user.phone),
@@ -72,16 +63,11 @@ export class TelegramService {
       }
     });
 
-    // Buyurtma tarixi tugmasi
     this.bot.onText(/🕘 Buyurtma tarixi/, async (msg) => {
       const chatId = msg.chat.id;
       const telegramId = msg.from.id.toString();
       try {
-        this.logger.log(`Processing order history for telegramId: ${telegramId}`);
-        const startTime = Date.now();
         const orders = await this.orderService.getUserOrders(telegramId);
-        const duration = Date.now() - startTime;
-        this.logger.log(`Fetched ${orders.length} orders in ${duration}ms`);
         const message = orders.length ? formatOrderList(orders) : 'Buyurtmalar mavjud emas.';
         await this.bot.sendMessage(chatId, `🕘 Buyurtma tarixi\n${message}`, {
           reply_markup: getMainKeyboard(false),
@@ -92,11 +78,9 @@ export class TelegramService {
       }
     });
 
-    // Biz haqimizda tugmasi
     this.bot.onText(/ℹ️ Biz haqimizda/, async (msg) => {
       const chatId = msg.chat.id;
       try {
-        this.logger.log(`Processing about for chatId: ${chatId}`);
         const message = `ℹ️ Biz haqimizda\nBiz onlayn do‘konmiz, sifatli mahsulotlar va tezkor xizmat taklif qilamiz!\nAloqa: @${this.adminTelegramUser}\nVeb-sayt: https://yourshop.uz`;
         await this.bot.sendMessage(chatId, message, {
           reply_markup: getMainKeyboard(false),

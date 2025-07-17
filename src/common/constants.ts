@@ -1,11 +1,19 @@
 export const ORDER_STATUS = {
-  PENDING: 'Pending',
-  PAID: 'Paid',
-  DELIVERED: 'Delivered',
-  CANCELLED: 'Cancelled',
+  PENDING: 'pending',
+  PAID: 'paid',
+  SHIPPED: 'shipped',
+  DELIVERED: 'delivered',
+  CANCELLED: 'cancelled',
 } as const;
 
 export const PAYMENT_TYPE = {
-  CLICK: 'Click',
-  PAYME: 'Payme',
+  CLICK: 'click',
+  PAYME: 'payme',
+} as const;
+
+export const DELIVERY_STATUS = {
+  PENDING: 'pending',
+  IN_TRANSIT: 'in_transit',
+  DELIVERED: 'delivered',
+  CANCELLED: 'cancelled',
 } as const;

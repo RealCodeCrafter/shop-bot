@@ -69,7 +69,7 @@ export class PaymentService {
       }
       if (data.status === 'success') {
         await this.paymentRepository.update(payment.id, { status: 'Success', transactionId: data.transaction_id });
-        await this.orderService.updateStatus(data.order_id, 'Paid');
+        await this.orderService.updateStatus(data.order_id, 'paid'); // 'Paid' → 'paid'
         this.logger.log(`Click to‘lovi muvaffaqiyatli: Order ${data.order_id}`);
       } else {
         await this.paymentRepository.update(payment.id, { status: 'Failed' });
@@ -81,7 +81,7 @@ export class PaymentService {
       }
       if (data.state === 1) {
         await this.paymentRepository.update(payment.id, { status: 'Success', transactionId: data.transaction_id });
-        await this.orderService.updateStatus(data.order_id, 'Paid');
+        await this.orderService.updateStatus(data.order_id, 'paid');
         this.logger.log(`Payme to‘lovi muvaffaqiyatli: Order ${data.order_id}`);
       } else {
         await this.paymentRepository.update(payment.id, { status: 'Failed' });

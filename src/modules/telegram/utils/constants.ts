@@ -3,3 +3,7 @@ export const WEBHOOK_URL = 'https://telegram-shop-bot-production.up.railway.app/
 export const ADMIN_TELEGRAM_ID = '5661241603';
 export const ADMIN_TELEGRAM_USER = 'Vali_003';
 export const ABOUT_MESSAGE = 'ℹ️ Biz haqimizda\nBiz onlayn do‘konmiz, sifatli mahsulotlar va tezkor xizmat taklif qilamiz!\nAloqa: @Vali_003\nVeb-sayt: https://yourshop.uz';
+
+
+
+
