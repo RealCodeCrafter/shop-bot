@@ -84,16 +84,14 @@ export class CallbackHandler {
                     addressDetails: msgDetails.text,
                   });
                   const items = order.orderItems?.map((item) => `${item.product.name} - ${item.quantity} dona`).join(', ');
-                  const message = `<pre>
-💳 Buyurtma yaratildi! Iltimos, to‘lovni amalga oshiring.
-📋 ID:                ${order.id}
-👤 Foydalanuvchi:    ${order.user?.fullName || 'Kiritilmagan'}
-📦 Mahsulotlar:      ${items || 'N/A'}
-💸 Jami:             ${order.totalAmount} so‘m
-📍 Manzil:           (${delivery.latitude}, ${delivery.longitude})
-🏠 Qo‘shimcha:       ${delivery.addressDetails || 'N/A'}
-━━━━━━━━━━━━━━━━━━━━━━
-</pre>`;
+                  const message = `💳 Buyurtma yaratildi! Iltimos, quyidagi havola orqali to‘lovni amalga oshiring.\n` +
+                                 `  📋 ID: ${order.id}\n` +
+                                 `  👤 Foydalanuvchi: ${order.user?.fullName || 'Kiritilmagan'}\n` +
+                                 `  📦 Mahsulotlar: ${items || 'N/A'}\n` +
+                                 `  💸 Jami: ${order.totalAmount} so‘m\n` +
+                                 `  📍 Manzil: (${delivery.latitude}, ${delivery.longitude})\n` +
+                                 `  🏠 Qo‘shimcha: ${delivery.addressDetails || 'N/A'}\n` +
+                                 `━━━━━━━━━━━━━━━`;
                   await this.telegramService.sendMessage(chatId, message, {
                     parse_mode: 'HTML',
                     reply_markup: {
@@ -145,21 +143,19 @@ export class CallbackHandler {
 
           const items = order.orderItems?.map((item) => `${item.product.name} - ${item.quantity} dona`).join(', ');
 
-          const message = `<pre>
-✅ Buyurtma tasdiqlandi!
-📋 ID:                ${order.id}
-👤 Foydalanuvchi:    ${order.user?.fullName || 'Kiritilmagan'}
-📦 Mahsulotlar:      ${items || 'N/A'}
-💸 Jami:             ${order.totalAmount} so‘m
-📊 Status:           ${ORDER_STATUS.PAID}
-💵 To‘lov turi:      ${paymentType}
-📍 Manzil:           (${delivery.latitude}, ${delivery.longitude})
-🏠 Qo‘shimcha:       ${delivery.addressDetails || 'N/A'}
-🚚 Yetkazib beruvchi:${delivery.courierName || 'N/A'}
-📞 Telefon:          ${delivery.courierPhone || 'N/A'}
-📅 Yetkazib berish:  ${delivery.deliveryDate?.toLocaleString('uz-UZ') || 'N/A'}
-━━━━━━━━━━━━━━━━━━━━━━
-</pre>`;
+          const message = `✅ Buyurtma tasdiqlandi!\n` +
+                         `  📋 ID: ${order.id}\n` +
+                         `  👤 Foydalanuvchi: ${order.user?.fullName || 'Kiritilmagan'}\n` +
+                         `  📦 Mahsulotlar: ${items || 'N/A'}\n` +
+                         `  💸 Jami: ${order.totalAmount} so‘m\n` +
+                         `  📊 Status: ${ORDER_STATUS.PAID}\n` +
+                         `  💵 To‘lov turi: ${paymentType}\n` +
+                         `  📍 Manzil: (${delivery.latitude}, ${delivery.longitude})\n` +
+                         `  🏠 Qo‘shimcha: ${delivery.addressDetails || 'N/A'}\n` +
+                         `  🚚 Yetkazib beruvchi: ${delivery.courierName || 'N/A'}\n` +
+                         `  📞 Telefon: ${delivery.courierPhone || 'N/A'}\n` +
+                         `  📅 Taxminiy yetkazib berish sanasi: ${delivery.deliveryDate?.toLocaleString('uz-UZ') || 'N/A'}\n` +
+                         `━━━━━━━━━━━━━━━`;
 
           await this.telegramService.sendMessage(chatId, message, { parse_mode: 'HTML' });
 
