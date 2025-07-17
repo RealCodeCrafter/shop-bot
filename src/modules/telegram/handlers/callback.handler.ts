@@ -84,14 +84,46 @@ export class CallbackHandler {
                     longitude: msg.location.longitude,
                     addressDetails: msgDetails.text,
                   });
-                  await this.telegramService.sendMessage(chatId, '💳 Buyurtma yaratildi! Iltimos, to‘lov usulini tanlang:', {
+                  const items = order.orderItems?.map((item) => `${item.product.name} - ${item.quantity} dona`).join(', ');
+                  const message = `
+💳 <b>Buyurtma yaratildi! Iltimos, quyidagi havola orqali to‘lovni amalga oshiring.</b>
+📋 <b>ID:</b> ${order.id}
+👤 <b>Foydalanuvchi:</b> ${order.user?.fullName || 'Kiritilmagan'}
+📦 <b>Mahsulotlar:</b> ${items || 'N/A'}
+💸 <b>Jami:</b> ${order.totalAmount} so‘m
+📊 <b>Status:</b> ${order.status}
+📍 <b>Manzil:</b> (${delivery.latitude}, ${delivery.longitude})
+🏠 <b>Qo‘shimcha:</b> ${delivery.addressDetails || 'N/A'}
+🚚 <b>Yetkazib beruvchi:</b> ${delivery.courierName || 'N/A'}
+📞 <b>Telefon:</b> ${delivery.courierPhone || 'N/A'}
+📅 <b>Taxminiy yetkazib berish sanasi:</b> ${delivery.deliveryDate?.toLocaleString('uz-UZ') || 'N/A'}
+━━━━━━━━━━━━━━━
+`;
+                  await this.telegramService.sendMessage(chatId, message, {
+                    parse_mode: 'HTML',
                     reply_markup: {
                       inline_keyboard: [
-                        [{ text: '💵 Click orqali to‘lash', callback_data: `pay_${order.id}_${PAYMENT_TYPE.CLICK}` }],
-                        [{ text: '💵 Payme orqali to‘lash', callback_data: `pay_${order.id}_${PAYMENT_TYPE.PAYME}` }],
+                        [{ text: '💵 Click orqali to‘lash', callback_data: `confirm_payment_${order.id}_${PAYMENT_TYPE.CLICK}` }],
+                        [{ text: '💵 Payme orqali to‘lash', callback_data: `confirm_payment_${order.id}_${PAYMENT_TYPE.PAYME}` }],
                       ],
                     },
                   });
+                  const adminChatId = '5661241603';
+                  const adminMessage = `
+🔔 <b>Yangi buyurtma yaratildi!</b>
+📋 <b>ID:</b> ${order.id}
+👤 <b>Foydalanuvchi:</b> ${order.user?.fullName || 'Kiritilmagan'}
+📦 <b>Mahsulotlar:</b> ${items || 'N/A'}
+💸 <b>Jami:</b> ${order.totalAmount} so‘m
+📊 <b>Status:</b> ${order.status}
+📍 <b>Manzil:</b> (${delivery.latitude}, ${delivery.longitude})
+🏠 <b>Qo‘shimcha:</b> ${delivery.addressDetails || 'N/A'}
+🚚 <b>Yetkazib beruvchi:</b> ${delivery.courierName || 'N/A'}
+📞 <b>Telefon:</b> ${delivery.courierPhone || 'N/A'}
+📅 <b>Taxminiy yetkazib berish sanasi:</b> ${delivery.deliveryDate?.toLocaleString('uz-UZ') || 'N/A'}
+━━━━━━━━━━━━━━━
+`;
+                  await this.telegramService.sendMessage(adminChatId, adminMessage, { parse_mode: 'HTML' });
                 } catch (error) {
                   this.logger.error(`Error in delivery: ${error.message}`);
                   await this.telegramService.sendMessage(chatId, '❌ Yetkazib berish ma’lumotlarini saqlashda xato yuz berdi.');
@@ -102,51 +134,6 @@ export class CallbackHandler {
               await this.telegramService.sendMessage(chatId, '❌ Yetkazib berish manzilini saqlashda xato yuz berdi.');
             }
           });
-        } else if (data.startsWith('pay_')) {
-          const [_, orderId, paymentType] = data.split('_');
-          if (!Object.values(PAYMENT_TYPE).includes(paymentType)) {
-            await this.telegramService.sendMessage(chatId, '❌ Noto‘g‘ri to‘lov turi.');
-            return;
-          }
-          const order = await this.orderService.findOne(parseInt(orderId));
-          const delivery = await this.deliveryService.findOneByOrderId(order.id);
-          const items = order.orderItems?.map((item) => `${item.product.name} - ${item.quantity} dona`).join(', ');
-          // To‘lov usuli tanlanganini bildiruvchi xabar
-          const message = `
-💳 <b>Buyurtma yaratildi! Iltimos, to‘lovni amalga oshiring.</b>
-📋 <b>ID:</b> ${order.id}
-👤 <b>Foydalanuvchi:</b> ${order.user?.fullName || 'Kiritilmagan'}
-📦 <b>Mahsulotlar:</b> ${items || 'N/A'}
-💸 <b>Jami:</b> ${order.totalAmount} so‘m
-📊 <b>Status:</b> ${order.status}
-💵 <b>To‘lov turi:</b> ${paymentType}
-📍 <b>Manzil:</b> (${delivery.latitude}, ${delivery.longitude})
-🏠 <b>Qo‘shimcha:</b> ${delivery.addressDetails || 'N/A'}
-🚚 <b>Yetkazib beruvchi:</b> ${delivery.courierName || 'N/A'}
-📞 <b>Telefon:</b> ${delivery.courierPhone || 'N/A'}
-📅 <b>Taxminiy yetkazib berish sanasi:</b> ${delivery.deliveryDate?.toLocaleString('uz-UZ') || 'N/A'}
-━━━━━━━━━━━━━━━
-✅ To‘lovni tasdiqlash uchun: /confirm_payment_${order.id}_${paymentType}
-`;
-          await this.telegramService.sendMessage(chatId, message, { parse_mode: 'HTML' });
-          // Admin uchun xabar
-          const adminChatId = '5661241603';
-          const adminMessage = `
-🔔 <b>Yangi buyurtma yaratildi!</b>
-📋 <b>ID:</b> ${order.id}
-👤 <b>Foydalanuvchi:</b> ${order.user?.fullName || 'Kiritilmagan'}
-📦 <b>Mahsulotlar:</b> ${items || 'N/A'}
-💸 <b>Jami:</b> ${order.totalAmount} so‘m
-📊 <b>Status:</b> ${order.status}
-💵 <b>To‘lov turi:</b> ${paymentType}
-📍 <b>Manzil:</b> (${delivery.latitude}, ${delivery.longitude})
-🏠 <b>Qo‘shimcha:</b> ${delivery.addressDetails || 'N/A'}
-🚚 <b>Yetkazib beruvchi:</b> ${delivery.courierName || 'N/A'}
-📞 <b>Telefon:</b> ${delivery.courierPhone || 'N/A'}
-📅 <b>Taxminiy yetkazib berish sanasi:</b> ${delivery.deliveryDate?.toLocaleString('uz-UZ') || 'N/A'}
-━━━━━━━━━━━━━━━
-`;
-          await this.telegramService.sendMessage(adminChatId, adminMessage, { parse_mode: 'HTML' });
         } else if (data.startsWith('confirm_payment_')) {
           const [_, orderId, paymentType] = data.split('_');
           if (!Object.values(PAYMENT_TYPE).includes(paymentType)) {
@@ -155,7 +142,6 @@ export class CallbackHandler {
           }
           const order = await this.orderService.findOne(parseInt(orderId));
           const delivery = await this.deliveryService.findOneByOrderId(order.id);
-          // To‘lov tasdiqlanganda statusni yangilash
           await this.orderService.updateStatus(parseInt(orderId), ORDER_STATUS.PAID);
           await this.orderService.update(parseInt(orderId), { paymentType });
           const items = order.orderItems?.map((item) => `${item.product.name} - ${item.quantity} dona`).join(', ');
@@ -278,15 +264,7 @@ export class CallbackHandler {
           await this.categoryService.remove(categoryId);
           await this.telegramService.sendMessage(chatId, '✅ Kategoriya o‘chirildi.');
         } else if (data === 'add_product') {
-          await this.telegramService.sendMessage(
-              chatId,
-              '📦 Mahsulot ma‘lumotlarini kiriting (nomi;narxi;tasviri;rasm URL;kategoriya ID;ombordagi soni):',
-              {
-                reply_markup: {
-                  force_reply: true,
-                },
-              },
-            );
+          await this.telegramService.sendMessage(chatId, '📦 Mahsulot ma‘lumotlarini kiriting (nomi;narxi;tasviri;rasm URL;kategoriya ID;ombordagi soni):', { reply_markup: { force_reply: true } });
           bot.once('message', async (msg) => {
             try {
               const [name, price, description, imageUrl, categoryId, stock] = msg.text.split(';');
