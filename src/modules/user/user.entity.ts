@@ -3,7 +3,7 @@ import { Order } from '../order/order.entity';
 import { Cart } from '../cart/cart.entity';
 import { Feedback } from '../feedback/feedback.entity';
 
-@Entity()
+@Entity("users")
 export class User {
   @PrimaryGeneratedColumn()
   id: number;

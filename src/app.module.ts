@@ -24,7 +24,7 @@ import { CacheModule } from '@nestjs/cache-manager';
     password: 'kzkKIsLBmILciwKoRmbLdZPtQawOsheO',
     database: 'railway',
     autoLoadEntities: true,
-    synchronize: false,
+    synchronize: true,
     ssl: {
       rejectUnauthorized: false,
     },
