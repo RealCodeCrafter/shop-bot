@@ -22,16 +22,14 @@ export class PaymentService {
     throw new NotFoundException(`ID ${orderId} bo'yicha buyurtma topilmadi`);
   }
 
-  let paymentUrl: string;
-  let normalizedPaymentType: typeof PAYMENT_TYPE[keyof typeof PAYMENT_TYPE];
+  const testUrl = `https://example.com/pay/${paymentType}/${order.id}`;
 
-  if (paymentType.toLowerCase() === 'click') {
-    normalizedPaymentType = PAYMENT_TYPE.CLICK;
-    paymentUrl = `https://www.google.com/search?q=click+payment+${order.id}`;
-  } else if (paymentType.toLowerCase() === 'payme') {
-    normalizedPaymentType = PAYMENT_TYPE.PAYME;
-    paymentUrl = `https://www.google.com/search?q=payme+payment+${order.id}`;
-  } else {
+  const normalizedPaymentType =
+    paymentType.toLowerCase() === 'click' ? PAYMENT_TYPE.CLICK :
+    paymentType.toLowerCase() === 'payme' ? PAYMENT_TYPE.PAYME :
+    null;
+
+  if (!normalizedPaymentType) {
     throw new Error('Noto‘g‘ri to‘lov turi');
   }
 
@@ -43,10 +41,9 @@ export class PaymentService {
     createdAt: new Date(),
   });
   await this.paymentRepository.save(payment);
-
   await this.orderService.update(order.id, { paymentType: normalizedPaymentType });
 
-  return paymentUrl;
+  return testUrl;
 }
 
 
