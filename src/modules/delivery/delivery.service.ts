@@ -34,8 +34,12 @@ export class DeliveryService {
     return this.deliveryRepository.save(delivery);
   }
 
-  async findAll(): Promise<Delivery[]> {
-    return this.deliveryRepository.find({ relations: ['order', 'order.user'] });
+  async findAll(page: number = 1, limit: number = 10): Promise<Delivery[]> {
+    return this.deliveryRepository.find({
+      relations: ['order', 'order.user'],
+      skip: (page - 1) * limit,
+      take: limit,
+    });
   }
 
   async findOne(id: number): Promise<Delivery> {

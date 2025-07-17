@@ -82,22 +82,25 @@ export class OrderService {
 
     await this.cartService.clearCart(telegramId);
 
-    // Notify admin
     await this.notifyAdminOrderCreated(savedOrder, user);
 
     return savedOrder;
   }
 
   async notifyAdminOrderCreated(order: Order, user: any) {
-    const adminChatId = '5661241603'; // Replace with actual admin chat ID
+    const adminChatId = '5661241603';
     const items = order.orderItems?.map((item) => `${item.product.name} - ${item.quantity} dona`).join(', ');
     const message = `Yangi buyurtma!\nID: ${order.id}\nFoydalanuvchi: ${user.fullName || 'Noma’lum'}\nMahsulotlar: ${items || 'N/A'}\nJami: ${order.totalAmount} so‘m\nStatus: ${order.status}`;
     await this.telegramService.sendMessage(adminChatId, message);
   }
 
-  async findAll(): Promise<Order[]> {
-    this.logger.log('Fetching all orders');
-    const orders = await this.orderRepository.find({ relations: ['user', 'orderItems', 'orderItems.product', 'deliveries'] });
+  async findAll(page: number = 1, limit: number = 10): Promise<Order[]> {
+    this.logger.log(`Fetching orders, page: ${page}, limit: ${limit}`);
+    const orders = await this.orderRepository.find({
+      relations: ['user', 'orderItems', 'orderItems.product', 'deliveries'],
+      skip: (page - 1) * limit,
+      take: limit,
+    });
     this.logger.log(`Found ${orders.length} orders`);
     return orders;
   }
@@ -115,8 +118,8 @@ export class OrderService {
     return order;
   }
 
-  async getUserOrders(telegramId: string): Promise<Order[]> {
-    this.logger.log(`Fetching orders for telegramId: ${telegramId}`);
+  async getUserOrders(telegramId: string, page: number = 1, limit: number = 10): Promise<Order[]> {
+    this.logger.log(`Fetching orders for telegramId: ${telegramId}, page: ${page}, limit: ${limit}`);
     const user = await this.userService.findByTelegramId(telegramId);
     if (!user) {
       this.logger.error(`User not found for telegramId: ${telegramId}`);
@@ -125,6 +128,8 @@ export class OrderService {
     const orders = await this.orderRepository.find({
       where: { user: { id: user.id } },
       relations: ['orderItems', 'orderItems.product', 'deliveries'],
+      skip: (page - 1) * limit,
+      take: limit,
     });
     this.logger.log(`Found ${orders.length} orders for user ${telegramId}`);
     return orders;
@@ -136,7 +141,6 @@ export class OrderService {
     order.updatedAt = new Date();
     await this.orderRepository.save(order);
 
-    // Notify user
     const message = `Buyurtma #${id} statusi yangilandi: ${status}`;
     await this.telegramService.sendMessage(order.user.telegramId, message);
 
@@ -169,7 +173,7 @@ export class OrderService {
     let soldProducts = 0;
 
     orders.forEach((order) => {
-      const month = order.createdAt.toISOString().slice(0, 7); // YYYY-MM
+      const month = order.createdAt.toISOString().slice(0, 7);
       const year = order.createdAt.getFullYear();
       monthlyStats[month] = (monthlyStats[month] || 0) + order.totalAmount;
       yearlyStats[year] = (yearlyStats[year] || 0) + order.totalAmount;

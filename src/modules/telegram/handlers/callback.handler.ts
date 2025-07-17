@@ -90,7 +90,6 @@ export class CallbackHandler {
                       ],
                     },
                   });
-                  // Notify admin with delivery details
                   const adminChatId = '5661241603';
                   const adminMessage = `Yangi buyurtma!\nID: ${order.id}\nFoydalanuvchi: ${order.user?.fullName || 'Noma’lum'}\nMahsulotlar: ${items || 'N/A'}\nJami: ${order.totalAmount} so‘m\nStatus: ${order.status}\nManzil: (${delivery.latitude}, ${delivery.longitude})\nQo‘shimcha: ${delivery.addressDetails || 'N/A'}\nYetkazib beruvchi: ${delivery.courierName || 'N/A'}\nTelefon: ${delivery.courierPhone || 'N/A'}\nTaxminiy yetkazib berish sanasi: ${delivery.deliveryDate?.toLocaleString() || 'N/A'}`;
                   await this.telegramService.sendMessage(adminChatId, adminMessage);
@@ -294,30 +293,74 @@ export class CallbackHandler {
           const userId = parseInt(data.split('_')[2]);
           await this.userService.remove(userId);
           await this.telegramService.sendMessage(chatId, 'Foydalanuvchi o‘chirildi.');
-        } else if (data === 'edit_order') {
-          const orders = await this.orderService.findAll();
-          const keyboard = orders.map((order) => [{ text: `ID: ${order.id}`, callback_data: `edit_order_${order.id}` }]);
-          await this.telegramService.sendMessage(chatId, 'Tahrir qilinadigan buyurtmani tanlang:', { reply_markup: { inline_keyboard: keyboard } });
-        } else if (data.startsWith('edit_order_')) {
-          const orderId = parseInt(data.split('_')[2]);
-          await this.telegramService.sendMessage(chatId, 'Yangi statusni kiriting (pending, confirmed, shipped, delivered, cancelled):', { reply_markup: { force_reply: true } });
-          bot.once('message', async (msg) => {
-            try {
-              await this.orderService.updateStatus(orderId, msg.text);
-              await this.telegramService.sendMessage(chatId, 'Buyurtma statusi yangilandi.');
-            } catch (error) {
-              this.logger.error(`Error in edit_order: ${error.message}`);
-              await this.telegramService.sendMessage(chatId, 'Buyurtma statusini yangilashda xato yuz berdi.');
-            }
-          });
-        } else if (data === 'view_orders') {
-          const orders = await this.orderService.getUserOrders(telegramId);
-          await this.telegramService.sendMessage(chatId, formatOrderList(orders));
-        } else if (data === 'view_deliveries') {
-          const deliveries = await this.deliveryService.findAll();
-          await this.telegramService.sendMessage(chatId, formatDeliveryList(deliveries));
+      } else if (data.startsWith('view_orders_')) {
+  const page = parseInt(data.split('_')[2]) || 1;
+  const orders = await this.orderService.getUserOrders(telegramId, page, 10);
+
+  const keyboard: TelegramBot.InlineKeyboardButton[][] = [];
+
+  if (page > 1) {
+    keyboard.push([{ text: '⬅️ Oldingi sahifa', callback_data: `view_orders_${page - 1}` }]);
+  }
+  if (orders.length === 10) {
+    keyboard.push([{ text: '➡️ Keyingi sahifa', callback_data: `view_orders_${page + 1}` }]);
+  }
+
+  await this.telegramService.sendMessage(chatId, formatOrderList(orders), {
+    reply_markup: {
+      inline_keyboard: keyboard,
+    },
+  });
+
+} else if (data === 'view_orders') {
+  const orders = await this.orderService.getUserOrders(telegramId, 1, 10);
+  const keyboard: TelegramBot.InlineKeyboardButton[][] = [];
+
+  if (orders.length === 10) {
+    keyboard.push([{ text: '➡️ Keyingi sahifa', callback_data: 'view_orders_2' }]);
+  }
+
+  await this.telegramService.sendMessage(chatId, formatOrderList(orders), {
+    reply_markup: {
+      inline_keyboard: keyboard,
+    },
+  });
+
+} else if (data.startsWith('view_deliveries_')) {
+  const page = parseInt(data.split('_')[2]) || 1;
+  const deliveries = await this.deliveryService.findAll(page, 10);
+
+  const keyboard: TelegramBot.InlineKeyboardButton[][] = [];
+
+  if (page > 1) {
+    keyboard.push([{ text: '⬅️ Oldingi sahifa', callback_data: `view_deliveries_${page - 1}` }]);
+  }
+  if (deliveries.length === 10) {
+    keyboard.push([{ text: '➡️ Keyingi sahifa', callback_data: `view_deliveries_${page + 1}` }]);
+  }
+
+  await this.telegramService.sendMessage(chatId, formatDeliveryList(deliveries), {
+    reply_markup: {
+      inline_keyboard: keyboard,
+    },
+  });
+
+} else if (data === 'view_deliveries') {
+  const deliveries = await this.deliveryService.findAll(1, 10);
+  const keyboard: TelegramBot.InlineKeyboardButton[][] = [];
+
+  if (deliveries.length === 10) {
+    keyboard.push([{ text: '➡️ Keyingi sahifa', callback_data: 'view_deliveries_2' }]);
+  }
+
+  await this.telegramService.sendMessage(chatId, formatDeliveryList(deliveries), {
+    reply_markup: {
+      inline_keyboard: keyboard,
+    },
+  });
+
         } else if (data === 'edit_delivery') {
-          const deliveries = await this.deliveryService.findAll();
+          const deliveries = await this.deliveryService.findAll(1, 10);
           const keyboard = deliveries.map((delivery) => [{ text: `ID: ${delivery.id}`, callback_data: `edit_delivery_${delivery.id}` }]);
           await this.telegramService.sendMessage(chatId, 'Tahrir qilinadigan yetkazib berishni tanlang:', { reply_markup: { inline_keyboard: keyboard } });
         } else if (data.startsWith('edit_delivery_')) {
@@ -368,7 +411,11 @@ export class CallbackHandler {
         this.logger.error(`Error in callback: ${error.message}`);
         await this.telegramService.sendMessage(chatId, 'Xatolik yuz berdi, iltimos keyinroq urinib ko‘ring.');
       } finally {
-        await query.answerCbQuery();
+        try {
+          await bot.answerCallbackQuery(query.id);
+        } catch (err) {
+          this.logger.error(`Error in answerCallbackQuery: ${err.message}`);
+        }
       }
     });
   }
