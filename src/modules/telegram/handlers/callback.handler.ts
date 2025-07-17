@@ -90,12 +90,8 @@ export class CallbackHandler {
 👤 <b>Foydalanuvchi:</b> ${order.user?.fullName || 'Kiritilmagan'}
 📦 <b>Mahsulotlar:</b> ${items || 'N/A'}
 💸 <b>Jami:</b> ${order.totalAmount} so‘m
-📊 <b>Status:</b> ${order.status}
 📍 <b>Manzil:</b> (${delivery.latitude}, ${delivery.longitude})
 🏠 <b>Qo‘shimcha:</b> ${delivery.addressDetails || 'N/A'}
-🚚 <b>Yetkazib beruvchi:</b> ${delivery.courierName || 'N/A'}
-📞 <b>Telefon:</b> ${delivery.courierPhone || 'N/A'}
-📅 <b>Taxminiy yetkazib berish sanasi:</b> ${delivery.deliveryDate?.toLocaleString('uz-UZ') || 'N/A'}
 ━━━━━━━━━━━━━━━
 `;
                   await this.telegramService.sendMessage(chatId, message, {
