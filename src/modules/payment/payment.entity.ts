@@ -2,7 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
 import { Order } from '../order/order.entity';
 import { PAYMENT_TYPE } from '../../common/constants';
 
-@Entity()
+@Entity("TelegramPayment")
 export class Payment {
   @PrimaryGeneratedColumn()
   id: number;

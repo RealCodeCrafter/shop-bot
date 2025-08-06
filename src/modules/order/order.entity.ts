@@ -5,7 +5,7 @@ import { Payment } from '../payment/payment.entity';
 import { Delivery } from '../delivery/delivery.entity';
 import { ORDER_STATUS, PAYMENT_TYPE } from '../../common/constants';
 
-@Entity()
+@Entity("telegramOrder")
 export class Order {
   @PrimaryGeneratedColumn()
   id: number;

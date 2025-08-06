@@ -4,7 +4,7 @@ import { Cart } from '../cart/cart.entity';
 import { OrderItem } from '../order/order-item.entity';
 import { Feedback } from '../feedback/feedback.entity';
 
-@Entity()
+@Entity("telegramProduct")
 export class Product {
   @PrimaryGeneratedColumn()
   id: number;
