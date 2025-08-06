@@ -18,7 +18,7 @@ export class TelegramService {
     @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
     private deliveryService: DeliveryService,
   ) {
-    
+
     const token = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
     const webhookUrl = this.configService.get<string>('WEBHOOK_URL');
     this.adminTelegramUser = this.configService.get<string>('ADMIN_TELEGRAM_USERNAME') || 'Vali_003';
@@ -38,18 +38,18 @@ export class TelegramService {
     this.setupCommands();
   }
 
-  private async setupWebhook(webhookUrl: string) {
-    try {
-      this.logger.log(`Setting webhook to ${webhookUrl}`);
-      const startTime = Date.now();
-      await this.bot.setWebHook(webhookUrl);
-      const duration = Date.now() - startTime;
-      this.logger.log(`Webhook set in ${duration}ms`);
-    } catch (error) {
-      this.logger.error(`Failed to set webhook: ${error.message}`);
-      throw error;
-    }
+ private async setupWebhook(webhookUrl: string) {
+  try {
+    this.logger.log(`Attempting to set webhook to ${webhookUrl}`);
+    const startTime = Date.now();
+    const result = await this.bot.setWebHook(webhookUrl);
+    const duration = Date.now() - startTime;
+    this.logger.log(`Webhook set successfully in ${duration}ms: ${JSON.stringify(result)}`);
+  } catch (error) {
+    this.logger.error(`Failed to set webhook: ${error.message}`, error.stack);
+    throw error;
   }
+}
 
   private setupCommands() {
   this.bot.onText(/👤 Profilim|👤 Мой профиль/, async (msg) => {

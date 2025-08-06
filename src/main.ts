@@ -14,10 +14,13 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
     app.enableCors();
-
     app.getHttpAdapter().get('/health', (req, res) => {
       logger.log('Health check endpoint called');
       res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+    });
+    app.getHttpAdapter().get('/', (req, res) => {
+      logger.log('Root endpoint called');
+      res.status(200).json({ message: 'Welcome to the Shop Bot API', status: 'ok' });
     });
 
     app.useGlobalPipes(new ValidationPipe());
